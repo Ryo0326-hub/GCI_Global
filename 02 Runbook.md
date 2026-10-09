@@ -8,11 +8,13 @@ tags: [gci, workflow]
 
 ## First Colab run
 
-1. Open [comp.ipynb](https://colab.research.google.com/drive/1sAPtD9Kmf3DiXiyFaLinhfOHHTcuGYZR).
-2. Select Runtime → Run all. Authorize your own Drive mount when prompted.
+1. Reload the updated [comp.ipynb](https://colab.research.google.com/drive/1sAPtD9Kmf3DiXiyFaLinhfOHHTcuGYZR). If you have unsaved edits, save a separate copy before reloading.
+2. Select Runtime → Run all. The setup cell installs the pinned packages, tests them in a fresh process, and restarts the session once. This expected restart clears cached imports. After Colab reconnects, select Run all again and authorize your own Drive mount.
 3. Keep B01's five-fold development configuration and the audit disabled.
 4. Wait for each fold and the output checks. Save the notebook with Cmd+S / Ctrl+S before the ZIP cell.
 5. Download `submission.csv` and `comp.zip`, or find them in the Competition Drive folder.
+
+Keep NumPy **2.2.6**. NumPy 1.26.4 is unsupported on the Python 3.13 runtime seen in the traceback. The original pins passed fresh Python 3.12 and 3.13 checks. If setup reports a failed fresh-process check, select Runtime → Disconnect and delete runtime, reopen the updated notebook, and repeat the two-pass setup. See [[research/COLAB_ENVIRONMENT_FIX]].
 
 ## Output locations
 
@@ -37,7 +39,15 @@ Alternatively, unzip the archive and copy its `Experiments/Runs` notes into this
 
 ## Next experiment
 
-Change the label and add one feature group. Keep the same folds/seed for a controlled comparison. Groups: scores, affordability, tenure, missingness, peer, categories, logs. Enable Optuna only after a baseline, and compare tuned parameters with five-fold results. Record both rejected and accepted ideas in [[06 Decisions]].
+Affordability is the strongest completed feature screen. After confirming the setup works, reproduce that candidate by changing these three values in the configuration cell:
+
+```python
+label='F02_affordability',
+models=('lightgbm',),
+feature_groups=('affordability',),
+```
+
+Keep every other setting, including seed 42, five folds and `evaluate_audit=False`. Its local OOF AUC was **0.757137**, versus raw-feature LightGBM **0.748699**. The default notebook still reproduces B01 so environment repair does not silently change the experiment. For the next controlled comparison, use a new label and `models=('catboost',)` with the same affordability group, then confirm the strongest model with another seed. Enable Optuna after that confirmation. See [[research/FEATURE_SCREEN]] and [[06 Decisions]].
 
 ## Audit and final refit
 

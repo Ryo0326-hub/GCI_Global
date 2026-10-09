@@ -1,0 +1,110 @@
+"""Stdlib-only Colab setup: verify the installed stack and restart once after changes."""
+from importlib import metadata
+import hashlib
+import json
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
+
+
+def fingerprint(pins, python_version):
+    identity = {"pins": pins, "python": list(python_version[:2])}
+    return hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
+
+
+def validate_python(pins, python_version):
+    minor = tuple(python_version[:2])
+    if not (3, 10) <= minor < (3, 14):
+        raise RuntimeError("These dependency pins support Python 3.10–3.13. Select a supported Colab runtime.")
+    if minor >= (3, 13) and int(pins["numpy"].split(".")[0]) < 2:
+        raise RuntimeError("NumPy 1.26 does not support Python 3.13. Keep the tested NumPy 2.2.6 pin.")
+
+
+def installed_versions(pins):
+    values = {}
+    for package in pins:
+        try:
+            values[package] = metadata.version(package)
+        except metadata.PackageNotFoundError:
+            values[package] = None
+    return values
+
+
+def restart_required(pins, installed, marker, python_version, pid, loaded):
+    changed = installed != pins
+    previous_setup = marker.get("fingerprint") == fingerprint(pins, python_version)
+    same_process = marker.get("install_pid") == pid
+    stale_import = any(loaded.get(name) not in (None, pins[name]) for name in pins)
+    return changed or not previous_setup or same_process or stale_import
+
+
+def check_stack(pins):
+    """Exercise the exact failing import path plus both native model libraries."""
+    validate_python(pins, sys.version_info)
+    versions = installed_versions(pins)
+    if versions != pins:
+        raise RuntimeError(f"Unexpected installed versions: {versions}; expected {pins}")
+    import numpy as np
+    import numpy.strings
+    import pandas as pd
+    import scipy.sparse
+    from sklearn.metrics import roc_auc_score
+    from lightgbm import LGBMClassifier
+    from catboost import CatBoostClassifier
+    if np.__version__ != pins["numpy"]:
+        raise RuntimeError("Loaded NumPy differs from installed NumPy. Restart the Colab session.")
+    assert np.strings.str_len(np.array(["gci"])).tolist() == [3]
+    x = pd.DataFrame({"a": np.arange(20, dtype=float), "b": np.arange(20, dtype=float) % 3})
+    y = np.arange(20) % 2
+    assert scipy.sparse.csr_matrix(x).shape == (20, 2)
+    models = [LGBMClassifier(n_estimators=3, num_leaves=3, min_child_samples=1, n_jobs=1, verbosity=-1),
+              CatBoostClassifier(iterations=3, depth=2, thread_count=1, verbose=False,
+                                 allow_writing_files=False, random_seed=42)]
+    for model in models:
+        model.fit(x, y)
+        prediction = model.predict_proba(x)[:, 1]
+        assert np.isfinite(prediction).all()
+        assert 0 <= roc_auc_score(y, prediction) <= 1
+    return {"python": sys.version.split()[0], "packages": versions,
+            "checks": "NumPy strings, SciPy sparse, sklearn, LightGBM and CatBoost tiny fits passed"}
+
+
+def prepare_colab(pins, marker_path="/content/.gci_environment.json"):
+    import google.colab  # Restrict session restarts to the requested Colab environment.
+    validate_python(pins, sys.version_info)
+    marker_path = Path(marker_path)
+    try:
+        marker = json.loads(marker_path.read_text())
+    except (FileNotFoundError, ValueError):
+        marker = {}
+    before = installed_versions(pins)
+    aliases = {"scikit-learn": "sklearn"}
+    loaded = {name: getattr(sys.modules.get(aliases.get(name, name)), "__version__", None) for name in pins}
+    restart = restart_required(pins, before, marker, sys.version_info, os.getpid(), loaded)
+    if before != pins:
+        print("Installing the pinned competition packages...", flush=True)
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet",
+                               "--disable-pip-version-check", "--only-binary=:all:",
+                               *[f"{name}=={value}" for name, value in pins.items()]])
+    # Test the disk installation in a fresh process, without Colab's cached modules.
+    script = ("import json,sys; sys.path.insert(0,sys.argv[1]); "
+              "from gci_environment import check_stack; "
+              "print(json.dumps(check_stack(json.loads(sys.argv[2]))))")
+    checked = subprocess.run([sys.executable, "-c", script, str(Path(__file__).parent), json.dumps(pins)],
+                             capture_output=True, text=True)
+    if checked.returncode:
+        raise RuntimeError("Fresh-process environment check failed. Use Runtime → Disconnect and delete runtime, "
+                           "then run this notebook again.\n" + checked.stderr[-4000:])
+    print(checked.stdout.strip(), flush=True)
+    if restart:
+        marker_path.write_text(json.dumps({"fingerprint": fingerprint(pins, sys.version_info),
+                                          "install_pid": os.getpid()}))
+        print("Setup succeeded. Restarting this session once to discard stale imports. "
+              "After Colab reconnects, choose Runtime → Run all again. This step will then continue.", flush=True)
+        os.kill(os.getpid(), signal.SIGKILL)
+        raise RuntimeError("Session restart did not complete. Restart it manually before continuing.")
+    result = check_stack(pins)
+    print("Environment ready. Training can continue.", flush=True)
+    return result

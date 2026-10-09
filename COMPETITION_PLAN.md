@@ -4,7 +4,7 @@ Prepared October 8, 2026, using the supplied materials, the local competition da
 
 Prioritize **LightGBM and CatBoost using all 32 supplied features**, then improve their features and tune them with Optuna. Add XGBoost or a neural model when validation demonstrates useful additional signal. Choose the final model or blend by its ability to generalize. A larger ensemble does not automatically improve AUC.
 
-This plan is intended to maximize the chance of winning. No new model has been trained or submitted, so there is no measured score or evidence yet that this pipeline will beat 0.79169.
+October 9 progress: B01 CatBoost completed five development folds at **0.752544** OOF AUC, and you confirmed its exported Drive CSV earned **0.756**, rank **668**. A controlled affordability feature screen raised LightGBM from **0.748699** to **0.757137** OOF AUC. The next target is **0.80 ROC AUC**, with **0.85** as a stretch goal; neither is currently demonstrated. Confirm affordability with CatBoost and another seed, then tune the stronger models. See [[research/FEATURE_SCREEN]] and [[04 Submission Tracker]].
 
 ## Competition facts and constraints
 
@@ -25,7 +25,7 @@ This plan is intended to maximize the chance of winning. No new model has been t
 
 Rule source: [competition README](/Users/ryokitano/Downloads/README.ipynb), particularly Evaluation and Rules. The [tutorial slides](/Users/ryokitano/Downloads/competition_tutorial.pptx) also confirm the deadline and code-submission workflow. The README's detailed final-scoring description governs this plan.
 
-Audited data: [training file](/Users/ryokitano/Downloads/Competition/input/train.csv), [test file](/Users/ryokitano/Downloads/Competition/input/test.csv), and [sample submission](/Users/ryokitano/Downloads/Competition/input/sample_submission.csv). You identified the competition folder in Google Drive. Its identity has not been checked against these local files. Compare the saved hashes before starting a Drive/Colab run.
+Audited data: [training file](/Users/ryokitano/Downloads/Competition/input/train.csv), [test file](/Users/ryokitano/Downloads/Competition/input/test.csv), and [sample submission](/Users/ryokitano/Downloads/Competition/input/sample_submission.csv). The Drive competition folder and matching input bytes were verified during setup. Every run checks the saved hashes again.
 
 The supplied `EXT_SOURCE_1`, `EXT_SOURCE_2`, and `EXT_SOURCE_3` columns are allowed competition inputs, despite the word “external” in their names.
 

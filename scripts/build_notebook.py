@@ -9,6 +9,8 @@ ROOT = Path(__file__).resolve().parents[1]
 pipeline = (ROOT / "src/gci_pipeline.py").read_text()
 requirements = (ROOT / "requirements.txt").read_text()
 citations = (ROOT / "CITATIONS.md").read_text()
+environment = (ROOT / "src/gci_environment.py").read_text()
+pins = dict(line.split("==") for line in requirements.splitlines() if line)
 cells = []
 
 
@@ -24,7 +26,7 @@ cell("markdown", """# GCI World: Home Credit submission workflow
 
 This is the new competition notebook. The original tutorial is unchanged.
 
-**First run:** choose Runtime → Run all. Authorize your own Drive mount when Colab asks. The default compares LightGBM and CatBoost on all 32 supplied predictors and keeps a separate audit set out of model selection.
+**First run:** choose Runtime → Run all. Setup restarts the session once to clear cached packages. After Colab reconnects, choose Run all again and authorize your own Drive mount. The default compares LightGBM and CatBoost on all 32 supplied predictors and keeps a separate audit set out of model selection.
 
 Outputs in `MyDrive/GCI_Global/Competition`:
 - `output/submission.csv`: the current format-checked candidate.
@@ -34,8 +36,18 @@ Outputs in `MyDrive/GCI_Global/Competition`:
 
 Local AUC is not the public leaderboard score. Upload to Omnicampus manually and record its score. The **last** submission counts. Only supplied input files are allowed.
 """)
-cell("markdown", "## 1. Install the pinned environment\n\nIf Colab asks to restart after installation, restart once and run from the Drive cell onward. CPU is suitable for these first tree baselines.\n")
-cell("code", "%pip -q install " + " ".join(requirements.splitlines()) + "\n")
+cell("markdown", "## 1. Install and verify the pinned environment\n\nPython 3.13 needs NumPy 2.x. The tested NumPy 2.2.6 pin remains in place. Setup tests imports and both models in a fresh process, then restarts once to clear Colab's cached packages. After reconnecting, choose Run all again. A matching fresh session continues without another restart. CPU is suitable for these tree models.\n")
+cell("code", """# Keep this setup cell before importing NumPy, pandas, SciPy or sklearn.
+from pathlib import Path
+import importlib
+import sys
+
+environment_file = Path('/content/gci_environment.py')
+environment_file.write_text(""" + repr(environment) + """ )
+sys.path.insert(0, '/content')
+import gci_environment
+gci_environment = importlib.reload(gci_environment)
+environment_result = gci_environment.prepare_colab(""" + repr(pins) + ")\n")
 cell("markdown", "## 2. Mount Drive and use the tutorial's folder convention\n\nThe folder below was verified in your Drive. Change it only if you move the project.\n")
 cell("code", """from google.colab import drive
 drive.mount('/content/drive')
@@ -174,7 +186,8 @@ notebook = {"nbformat": 4, "nbformat_minor": 5,
             "metadata": {"colab": {"name": "comp.ipynb", "provenance": []},
                          "kernelspec": {"name": "python3", "display_name": "Python 3"},
                          "language_info": {"name": "python"},
-                         "gci": {"pipeline_version": "gci-setup-v1", "pipeline_sha256": hashlib.sha256(pipeline.encode()).hexdigest()}},
+                         "gci": {"pipeline_version": "gci-setup-v1", "pipeline_sha256": hashlib.sha256(pipeline.encode()).hexdigest(),
+                                 "environment_sha256": hashlib.sha256(environment.encode()).hexdigest()}},
             "cells": cells}
 backup = ROOT / "research/comp_original.ipynb"
 if not backup.exists() and (ROOT / "comp.ipynb").exists():

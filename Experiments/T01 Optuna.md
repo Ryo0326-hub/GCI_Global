@@ -12,6 +12,8 @@ Hypothesis: Tuning regularization and tree complexity improves a validated featu
 
 Configuration: `Keep the accepted groups fixed; enable RUN_OPTUNA.`
 
+Start with affordability alone after its CatBoost/second-seed confirmation. Score combinations were deferred, and adding missingness/tenure reduced affordability's AUC. Use a new label, keep audit disabled, search three development folds, then confirm selected parameters on five folds. See [[research/FEATURE_SCREEN]].
+
 Comparison: same input hashes, five folds, seed 42. Audit disabled during exploration.
 
 - [ ] Run the controlled experiment.

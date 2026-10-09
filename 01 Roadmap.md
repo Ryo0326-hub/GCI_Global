@@ -18,10 +18,11 @@ tags: [gci, planning]
 
 ## Oct 12–18: feature evidence
 
-- [ ] F01: credit-score combinations.
-- [ ] F02: affordability and family ratios.
-- [ ] F03: missingness and employment/life-stage features.
-- [ ] Combine only feature groups that improve fixed-fold results.
+- [x] F01: credit-score combinations screened with LightGBM; no material gain.
+- [x] F02: affordability and family ratios screened with LightGBM; +0.008438 OOF AUC.
+- [x] F03: missingness and employment/life-stage features screened with LightGBM.
+- [x] Test the improving groups together; reject the combination when it loses to affordability alone.
+- [ ] Confirm affordability using CatBoost and a second seed before tuning.
 
 ## Oct 19–25: tuning
 

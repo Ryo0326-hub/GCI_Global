@@ -6,12 +6,14 @@ An independent competition notebook and an Obsidian project vault. The workflow 
 
 ## Start in Colab
 
-1. Open `comp.ipynb` and choose **Runtime → Run all**. Authorize your own Drive mount when prompted.
+1. Reload the updated `comp.ipynb` and choose **Runtime → Run all**. Setup verifies the pins and restarts the session once to clear cached imports. After reconnecting, choose **Run all again** and authorize your own Drive mount.
 2. Keep the first run's B01 configuration. It fits five development folds and reserves 20% of labeled rows for a later audit.
 3. Save the notebook before packaging. Check that the CSV contains 61,500 rows and the ZIP verification succeeds.
 4. Review the experiment report before uploading the CSV and matching code ZIP to Omnicampus. Record the returned public score in the Submission Tracker.
 
 The notebook uses `MyDrive/GCI_Global/Competition/input/{train.csv,test.csv,sample_submission.csv}` and verifies the original file hashes. The original tutorial is preserved.
+
+The pinned stack uses **NumPy 2.2.6** and passed fresh Python **3.12 and 3.13** checks, including both model libraries. Do not downgrade to NumPy 1.26.4 on Python 3.13. The setup cell checks package versions and avoids a restart loop. See `research/COLAB_ENVIRONMENT_FIX.md` for diagnosis and recovery.
 
 | Output | Drive path under GCI_Global/Competition |
 | --- | --- |
@@ -51,6 +53,7 @@ The implementation is in `src/gci_pipeline.py`. After changing it, regenerate th
 .venv/bin/python scripts/build_notebook.py
 .venv/bin/python -m pytest -q
 .venv/bin/python scripts/check_notebook.py
+.venv/bin/python scripts/check_environment.py
 ```
 
 Each run stores a frozen `reproduce_config.json`. The ZIP includes a reproduction command, dependency versions, input/code/CSV hashes, the notebook, source, citations and matching CSV. Fitted models and datasets stay outside the code ZIP and Git.
@@ -59,6 +62,6 @@ Each run stores a frozen `reproduce_config.json`. The ZIP includes a reproductio
 
 Baseline → separate feature ablations → Optuna confirmation → model-diversity/blend checks → frozen audit → final full-data training. Keep folds and seeds fixed when comparing a single change. Audit evaluation remains disabled during exploration. Neural models are a later bounded experiment if they provide useful diversity.
 
-The supplied leaderboard target is 0.79169. Local OOF AUC is a different measurement and does not establish a leaderboard result. The last competition upload counts; the supplied deadline is November 20, 2026 at 01:00 UTC.
+B01 CatBoost earned a user-confirmed public AUC of **0.756**, rank **668**. Its local OOF AUC was **0.752544**. Affordability features raised LightGBM's local OOF AUC from **0.748699** to **0.757137**; this candidate has no public score yet. See `research/FEATURE_SCREEN.md` and `04 Submission Tracker.md`. The next target is **0.80 ROC AUC**, with **0.85** as a stretch goal. The earlier leader screenshot showed 0.79169. Local OOF AUC does not establish a leaderboard result. The last competition upload counts; the supplied deadline is November 20, 2026 at 01:00 UTC.
 
 See `COMPETITION_PLAN.md`, `research/CODE_STUDY.md` and `CITATIONS.md` for the reasoning and primary references. Downloaded reference-code snapshots remain local; their pinned source links are recorded in Git. Only competition-provided data enters training.

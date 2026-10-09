@@ -1,6 +1,6 @@
 ---
 type: experiment
-status: planned
+status: screened
 created: 2026-10-09
 tags: [gci, experiment]
 ---
@@ -14,9 +14,9 @@ Configuration: `('missingness', 'tenure')`
 
 Comparison: same input hashes, five folds, seed 42. Audit disabled during exploration.
 
-- [ ] Run the controlled experiment.
-- [ ] Link its generated report below.
-- [ ] Record the decision and next step.
+- [x] Run the controlled LightGBM experiment.
+- [x] Link its generated report below.
+- [x] Record the decision and next step.
 
-Report:
-Decision:
+Report: [[Experiments/Runs/20261009T050051427044Z_F03_missingness_tenure]]. LightGBM OOF AUC **0.749427**, **+0.000728** versus B01 LightGBM.
+Decision: Small standalone gain, but adding this group to affordability reduced AUC from 0.757137 to 0.756631. Defer the combination; CatBoost was not screened. [[Experiments/F04 Combined Features]] · [[research/FEATURE_SCREEN]].
