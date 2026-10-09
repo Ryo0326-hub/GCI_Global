@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+.DS_Store
+input/
+output/
+qa/
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+comp.zip
+obsidian_reports.zip
+research/comp_original.ipynb
+research/reference_code/
+core
+core.*

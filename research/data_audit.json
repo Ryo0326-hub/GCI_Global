@@ -1,0 +1,309 @@
+{
+  "prepared_client_date": "2026-10-08",
+  "timezone": "America/Toronto",
+  "data_location": "/Users/ryokitano/Downloads/Competition/input",
+  "drive_identity_verified": false,
+  "training_shape": [
+    171202,
+    34
+  ],
+  "test_shape": [
+    61500,
+    33
+  ],
+  "predictors": [
+    "NAME_CONTRACT_TYPE",
+    "CODE_GENDER",
+    "CNT_CHILDREN",
+    "AMT_INCOME_TOTAL",
+    "AMT_CREDIT",
+    "AMT_ANNUITY",
+    "AMT_GOODS_PRICE",
+    "NAME_INCOME_TYPE",
+    "NAME_EDUCATION_TYPE",
+    "NAME_FAMILY_STATUS",
+    "NAME_HOUSING_TYPE",
+    "REGION_POPULATION_RELATIVE",
+    "DAYS_BIRTH",
+    "DAYS_EMPLOYED",
+    "DAYS_REGISTRATION",
+    "DAYS_ID_PUBLISH",
+    "OWN_CAR_AGE",
+    "FLAG_MOBIL",
+    "FLAG_EMP_PHONE",
+    "FLAG_WORK_PHONE",
+    "OCCUPATION_TYPE",
+    "CNT_FAM_MEMBERS",
+    "REGION_RATING_CLIENT",
+    "ORGANIZATION_TYPE",
+    "EXT_SOURCE_1",
+    "EXT_SOURCE_2",
+    "EXT_SOURCE_3",
+    "DAYS_LAST_PHONE_CHANGE",
+    "AMT_REQ_CREDIT_BUREAU_HOUR",
+    "AMT_REQ_CREDIT_BUREAU_MON",
+    "AMT_REQ_CREDIT_BUREAU_QRT",
+    "AMT_REQ_CREDIT_BUREAU_YEAR"
+  ],
+  "n_predictors": 32,
+  "target_counts": {
+    "0": 157381,
+    "1": 13821
+  },
+  "target_positive_rate": 0.08072919708881905,
+  "schema": [
+    {
+      "column": "SK_ID_CURR",
+      "dtype": "int64"
+    },
+    {
+      "column": "NAME_CONTRACT_TYPE",
+      "dtype": "object"
+    },
+    {
+      "column": "CODE_GENDER",
+      "dtype": "object"
+    },
+    {
+      "column": "CNT_CHILDREN",
+      "dtype": "int64"
+    },
+    {
+      "column": "AMT_INCOME_TOTAL",
+      "dtype": "float64"
+    },
+    {
+      "column": "AMT_CREDIT",
+      "dtype": "float64"
+    },
+    {
+      "column": "AMT_ANNUITY",
+      "dtype": "float64"
+    },
+    {
+      "column": "AMT_GOODS_PRICE",
+      "dtype": "float64"
+    },
+    {
+      "column": "NAME_INCOME_TYPE",
+      "dtype": "object"
+    },
+    {
+      "column": "NAME_EDUCATION_TYPE",
+      "dtype": "object"
+    },
+    {
+      "column": "NAME_FAMILY_STATUS",
+      "dtype": "object"
+    },
+    {
+      "column": "NAME_HOUSING_TYPE",
+      "dtype": "object"
+    },
+    {
+      "column": "REGION_POPULATION_RELATIVE",
+      "dtype": "float64"
+    },
+    {
+      "column": "DAYS_BIRTH",
+      "dtype": "int64"
+    },
+    {
+      "column": "DAYS_EMPLOYED",
+      "dtype": "int64"
+    },
+    {
+      "column": "DAYS_REGISTRATION",
+      "dtype": "float64"
+    },
+    {
+      "column": "DAYS_ID_PUBLISH",
+      "dtype": "int64"
+    },
+    {
+      "column": "OWN_CAR_AGE",
+      "dtype": "float64"
+    },
+    {
+      "column": "FLAG_MOBIL",
+      "dtype": "int64"
+    },
+    {
+      "column": "FLAG_EMP_PHONE",
+      "dtype": "int64"
+    },
+    {
+      "column": "FLAG_WORK_PHONE",
+      "dtype": "int64"
+    },
+    {
+      "column": "OCCUPATION_TYPE",
+      "dtype": "object"
+    },
+    {
+      "column": "CNT_FAM_MEMBERS",
+      "dtype": "float64"
+    },
+    {
+      "column": "REGION_RATING_CLIENT",
+      "dtype": "int64"
+    },
+    {
+      "column": "ORGANIZATION_TYPE",
+      "dtype": "object"
+    },
+    {
+      "column": "EXT_SOURCE_1",
+      "dtype": "float64"
+    },
+    {
+      "column": "EXT_SOURCE_2",
+      "dtype": "float64"
+    },
+    {
+      "column": "EXT_SOURCE_3",
+      "dtype": "float64"
+    },
+    {
+      "column": "DAYS_LAST_PHONE_CHANGE",
+      "dtype": "float64"
+    },
+    {
+      "column": "AMT_REQ_CREDIT_BUREAU_HOUR",
+      "dtype": "float64"
+    },
+    {
+      "column": "AMT_REQ_CREDIT_BUREAU_MON",
+      "dtype": "float64"
+    },
+    {
+      "column": "AMT_REQ_CREDIT_BUREAU_QRT",
+      "dtype": "float64"
+    },
+    {
+      "column": "AMT_REQ_CREDIT_BUREAU_YEAR",
+      "dtype": "float64"
+    },
+    {
+      "column": "TARGET",
+      "dtype": "int64"
+    }
+  ],
+  "missing": {
+    "OWN_CAR_AGE": {
+      "train_count": 112992,
+      "train_fraction": 0.6599922898096985,
+      "test_count": 40909,
+      "test_fraction": 0.6651869918699187
+    },
+    "CNT_FAM_MEMBERS": {
+      "train_count": 2,
+      "train_fraction": 1.1682106517447226e-05,
+      "test_count": 0,
+      "test_fraction": 0.0
+    },
+    "EXT_SOURCE_1": {
+      "train_count": 118928,
+      "train_fraction": 0.6946647819534818,
+      "test_count": 42912,
+      "test_fraction": 0.6977560975609756
+    },
+    "EXT_SOURCE_2": {
+      "train_count": 369,
+      "train_fraction": 0.0021553486524690134,
+      "test_count": 130,
+      "test_fraction": 0.002113821138211382
+    },
+    "EXT_SOURCE_3": {
+      "train_count": 54586,
+      "train_fraction": 0.31883973318068715,
+      "test_count": 19690,
+      "test_fraction": 0.3201626016260163
+    },
+    "AMT_REQ_CREDIT_BUREAU_HOUR": {
+      "train_count": 23116,
+      "train_fraction": 0.13502178712865504,
+      "test_count": 8513,
+      "test_fraction": 0.13842276422764227
+    },
+    "AMT_REQ_CREDIT_BUREAU_MON": {
+      "train_count": 23116,
+      "train_fraction": 0.13502178712865504,
+      "test_count": 8513,
+      "test_fraction": 0.13842276422764227
+    },
+    "AMT_REQ_CREDIT_BUREAU_QRT": {
+      "train_count": 23116,
+      "train_fraction": 0.13502178712865504,
+      "test_count": 8513,
+      "test_fraction": 0.13842276422764227
+    },
+    "AMT_REQ_CREDIT_BUREAU_YEAR": {
+      "train_count": 23116,
+      "train_fraction": 0.13502178712865504,
+      "test_count": 8513,
+      "test_fraction": 0.13842276422764227
+    }
+  },
+  "ids": {
+    "train_range": [
+      0,
+      171201
+    ],
+    "test_range": [
+      171202,
+      232701
+    ],
+    "train_duplicates": 0,
+    "test_duplicates": 0,
+    "train_test_overlap": 0,
+    "test_order_matches_sample": true
+  },
+  "employment_placeholder": {
+    "value": 365243,
+    "training_count": 30898,
+    "test_count": 10565,
+    "training_flag_matches_xna_organization": true,
+    "test_zero_count": 2
+  },
+  "income_max": {
+    "train": 13500000.0,
+    "test": 117000000.0
+  },
+  "car_age_at_least_60": {
+    "train": 1826,
+    "test": 673
+  },
+  "default_rate_by_ext_source_3_missing": {
+    "False": {
+      "count": 116616,
+      "rate": 0.07705632160252453
+    },
+    "True": {
+      "count": 54586,
+      "rate": 0.08857582530319129
+    }
+  },
+  "existing_submission": {
+    "path": "/Users/ryokitano/Downloads/submission.csv",
+    "rows": 61500,
+    "columns": [
+      "SK_ID_CURR",
+      "TARGET"
+    ],
+    "unique_ids": 61500,
+    "ids_in_sample_order": true,
+    "finite_predictions": true,
+    "minimum": 0.0014889657050358,
+    "maximum": 0.5810433352288638,
+    "leaderboard_score": null,
+    "model_provenance": "unverified"
+  },
+  "model_training_performed": false,
+  "submission_performed": false,
+  "file_hashes": {
+    "train.csv": "b8dd5a61771d8eb2821972c1b7d3f2f747cc66471f4d34153036d2d9c458ecf1",
+    "test.csv": "dfb7aeb96e5af3d8616acaaba6b23cec8680845cfd525f7c08de15c6d2d42c65",
+    "sample_submission.csv": "6e5ad587b7c0b3d9fa39c90ce03e161ff5ef292193e117a6a02b11075dffe7db"
+  }
+}

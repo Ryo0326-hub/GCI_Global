@@ -1,0 +1,72 @@
+[
+  {
+    "repo": "WillKoehrsen/kaggle-credit-data-science-competition",
+    "commit": "3ea52480c618a80de925b9ecccde3a1f4a024b96",
+    "path": "notebooks/1-Getting Started.ipynb",
+    "source_url": "https://github.com/WillKoehrsen/kaggle-credit-data-science-competition/blob/3ea52480c618a80de925b9ecccde3a1f4a024b96/notebooks/1-Getting%20Started.ipynb",
+    "local_file": "/Users/ryokitano/Documents/Competitions/GCI_World/research/reference_code/koehrsen_getting_started.py",
+    "original_sha256": "c12aa4e03757f827b7b56931361b0baf47f6395fbf5f58e0b89618fbb5a1ab43",
+    "extracted_sha256": "e2fcd1de0e203bd60204e6cb84b715c9d5e1032b72b85e0483d0c1936a51490b",
+    "note": "Reference only. Not executed. Notebook outputs excluded."
+  },
+  {
+    "repo": "WillKoehrsen/kaggle-credit-data-science-competition",
+    "commit": "3ea52480c618a80de925b9ecccde3a1f4a024b96",
+    "path": "notebooks/2-Introduction to Manual Feature Engineering.ipynb",
+    "source_url": "https://github.com/WillKoehrsen/kaggle-credit-data-science-competition/blob/3ea52480c618a80de925b9ecccde3a1f4a024b96/notebooks/2-Introduction%20to%20Manual%20Feature%20Engineering.ipynb",
+    "local_file": "/Users/ryokitano/Documents/Competitions/GCI_World/research/reference_code/koehrsen_manual_features.py",
+    "original_sha256": "3c0362740cc86541760aba6e41123b9d78c216cf5f496073cd803b324b66d319",
+    "extracted_sha256": "b5c62fe115bbd1c5b25225fce2b0348ba76a9a6444926200753dbfc9ea3565a3",
+    "note": "Reference only. Not executed. Notebook outputs excluded."
+  },
+  {
+    "repo": "js-aguiar/home-credit-default-competition",
+    "commit": "d846e3f2477c0bf466128ab18db1971f85eb2c91",
+    "path": "pipeline/application_pipeline.py",
+    "source_url": "https://github.com/js-aguiar/home-credit-default-competition/blob/d846e3f2477c0bf466128ab18db1971f85eb2c91/pipeline/application_pipeline.py",
+    "local_file": "/Users/ryokitano/Documents/Competitions/GCI_World/research/reference_code/aguiar_application_pipeline.py",
+    "original_sha256": "e26594ef79fd641bdf394b29717ea1d893359863d6bc92af9fed9e1df6dc28ae",
+    "extracted_sha256": "e26594ef79fd641bdf394b29717ea1d893359863d6bc92af9fed9e1df6dc28ae",
+    "note": "Reference only. Not executed. Notebook outputs excluded."
+  },
+  {
+    "repo": "js-aguiar/home-credit-default-competition",
+    "commit": "d846e3f2477c0bf466128ab18db1971f85eb2c91",
+    "path": "model.py",
+    "source_url": "https://github.com/js-aguiar/home-credit-default-competition/blob/d846e3f2477c0bf466128ab18db1971f85eb2c91/model.py",
+    "local_file": "/Users/ryokitano/Documents/Competitions/GCI_World/research/reference_code/aguiar_model.py",
+    "original_sha256": "97b987564d494808c5e172d8983518f005b8f9d59cd823b41a9ac2c35b8a8236",
+    "extracted_sha256": "97b987564d494808c5e172d8983518f005b8f9d59cd823b41a9ac2c35b8a8236",
+    "note": "Reference only. Not executed. Notebook outputs excluded."
+  },
+  {
+    "repo": "minerva-ml/open-solution-home-credit",
+    "commit": "0a0a92268974b2cd050ac9ecbf264111036034d7",
+    "path": "notebooks/prediction_averaging.ipynb",
+    "source_url": "https://github.com/minerva-ml/open-solution-home-credit/blob/0a0a92268974b2cd050ac9ecbf264111036034d7/notebooks/prediction_averaging.ipynb",
+    "local_file": "/Users/ryokitano/Documents/Competitions/GCI_World/research/reference_code/minerva_prediction_averaging.py",
+    "original_sha256": "f90caa51285ed2c65c97249823008b73c4e2ac740599ad56e43f43b8f3af5ae2",
+    "extracted_sha256": "f9a9f9efaf210c61fe93f8fb912698ac868aa4e245b0376852ad9343f7c167fe",
+    "note": "Reference only. Not executed. Notebook outputs excluded."
+  },
+  {
+    "repo": "js-aguiar/home-credit-default-competition",
+    "commit": "d846e3f2477c0bf466128ab18db1971f85eb2c91",
+    "path": "LICENSE",
+    "source_url": "https://github.com/js-aguiar/home-credit-default-competition/blob/d846e3f2477c0bf466128ab18db1971f85eb2c91/LICENSE",
+    "local_file": "/Users/ryokitano/Documents/Competitions/GCI_World/research/reference_code/AGUIAR_LICENSE.txt",
+    "original_sha256": "ee1a2ee8ad1ee42ac8092f23b4dd6d7f0566159717b2a3bec97d95a772a67408",
+    "extracted_sha256": "ee1a2ee8ad1ee42ac8092f23b4dd6d7f0566159717b2a3bec97d95a772a67408",
+    "note": "Reference only. Not executed. Notebook outputs excluded."
+  },
+  {
+    "repo": "minerva-ml/open-solution-home-credit",
+    "commit": "0a0a92268974b2cd050ac9ecbf264111036034d7",
+    "path": "LICENSE",
+    "source_url": "https://github.com/minerva-ml/open-solution-home-credit/blob/0a0a92268974b2cd050ac9ecbf264111036034d7/LICENSE",
+    "local_file": "/Users/ryokitano/Documents/Competitions/GCI_World/research/reference_code/MINERVA_LICENSE.txt",
+    "original_sha256": "88c0e611c019923bdc56aad68a0b50cf0ebab632460a7942d1a426b14711e708",
+    "extracted_sha256": "88c0e611c019923bdc56aad68a0b50cf0ebab632460a7942d1a426b14711e708",
+    "note": "Reference only. Not executed. Notebook outputs excluded."
+  }
+]
