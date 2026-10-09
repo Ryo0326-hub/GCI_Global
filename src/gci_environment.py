@@ -1,17 +1,10 @@
-"""Stdlib-only Colab setup: verify the installed stack and restart once after changes."""
+"""Stdlib-only setup and fresh-process execution for the competition pipeline."""
 from importlib import metadata
-import hashlib
 import json
-import os
 from pathlib import Path
-import signal
 import subprocess
 import sys
-
-
-def fingerprint(pins, python_version):
-    identity = {"pins": pins, "python": list(python_version[:2])}
-    return hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
+import uuid
 
 
 def validate_python(pins, python_version):
@@ -30,14 +23,6 @@ def installed_versions(pins):
         except metadata.PackageNotFoundError:
             values[package] = None
     return values
-
-
-def restart_required(pins, installed, marker, python_version, pid, loaded):
-    changed = installed != pins
-    previous_setup = marker.get("fingerprint") == fingerprint(pins, python_version)
-    same_process = marker.get("install_pid") == pid
-    stale_import = any(loaded.get(name) not in (None, pins[name]) for name in pins)
-    return changed or not previous_setup or same_process or stale_import
 
 
 def check_stack(pins):
@@ -71,18 +56,10 @@ def check_stack(pins):
             "checks": "NumPy strings, SciPy sparse, sklearn, LightGBM and CatBoost tiny fits passed"}
 
 
-def prepare_colab(pins, marker_path="/content/.gci_environment.json"):
-    import google.colab  # Restrict session restarts to the requested Colab environment.
+def prepare_colab(pins):
+    import google.colab  # Keep installation scoped to the requested Colab environment.
     validate_python(pins, sys.version_info)
-    marker_path = Path(marker_path)
-    try:
-        marker = json.loads(marker_path.read_text())
-    except (FileNotFoundError, ValueError):
-        marker = {}
     before = installed_versions(pins)
-    aliases = {"scikit-learn": "sklearn"}
-    loaded = {name: getattr(sys.modules.get(aliases.get(name, name)), "__version__", None) for name in pins}
-    restart = restart_required(pins, before, marker, sys.version_info, os.getpid(), loaded)
     if before != pins:
         print("Installing the pinned competition packages...", flush=True)
         subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet",
@@ -98,13 +75,53 @@ def prepare_colab(pins, marker_path="/content/.gci_environment.json"):
         raise RuntimeError("Fresh-process environment check failed. Use Runtime → Disconnect and delete runtime, "
                            "then run this notebook again.\n" + checked.stderr[-4000:])
     print(checked.stdout.strip(), flush=True)
-    if restart:
-        marker_path.write_text(json.dumps({"fingerprint": fingerprint(pins, sys.version_info),
-                                          "install_pid": os.getpid()}))
-        print("Setup succeeded. Restarting this session once to discard stale imports. "
-              "After Colab reconnects, choose Runtime → Run all again. This step will then continue.", flush=True)
-        os.kill(os.getpid(), signal.SIGKILL)
-        raise RuntimeError("Session restart did not complete. Restart it manually before continuing.")
-    result = check_stack(pins)
-    print("Environment ready. Training can continue.", flush=True)
+    result = json.loads(checked.stdout.strip().splitlines()[-1])
+    result["execution_mode"] = "fresh_process"
+    print("Environment ready. Run all continues; model steps use fresh Python processes.", flush=True)
     return result
+
+
+def run_step(runtime_dir, code, payload, pins):
+    """Stream a pipeline step from a fresh interpreter without importing models in the notebook kernel."""
+    runtime_dir = Path(runtime_dir).resolve()
+    runtime_dir.mkdir(parents=True, exist_ok=True)
+    task_id = uuid.uuid4().hex
+    request = runtime_dir / f".gci_step_{task_id}.json"
+    response = runtime_dir / f".gci_result_{task_id}.json"
+    request.write_text(json.dumps({"payload": payload, "pins": pins}, allow_nan=False))
+    bootstrap = """import json, sys
+from importlib import metadata
+from pathlib import Path
+sys.path.insert(0, str(Path.cwd()))
+request = json.loads(Path(sys.argv[1]).read_text())
+actual = {name: metadata.version(name) for name in request['pins']}
+if actual != request['pins']:
+    raise RuntimeError(f'Worker package versions changed: {actual}')
+import gci_pipeline as gci
+payload = request['payload']
+result = None
+"""
+    script = bootstrap + code + "\nPath(sys.argv[2]).write_text(json.dumps(result, allow_nan=False))\n"
+    process = None
+    try:
+        process = subprocess.Popen([sys.executable, "-u", "-c", script, str(request), str(response)],
+                                   cwd=runtime_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        for line in process.stdout:
+            print(line, end="", flush=True)
+        if process.wait():
+            raise RuntimeError("Competition step failed. The worker's error is printed above.")
+        return json.loads(response.read_text())
+    except BaseException:
+        if process is not None and process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
+        raise
+    finally:
+        if process is not None and process.stdout is not None:
+            process.stdout.close()
+        request.unlink(missing_ok=True)
+        response.unlink(missing_ok=True)

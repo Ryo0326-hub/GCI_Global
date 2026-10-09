@@ -12,7 +12,9 @@ Public champion: **B01 CatBoost**, development OOF AUC **0.752544**, user-confir
 
 ## 2026-10-09: Colab environment repair
 
-Keep NumPy **2.2.6**. The traceback uses Python 3.13; Gemini's NumPy 1.26.4 downgrade is unsupported on that Python version and conflicts with installed packages requiring NumPy 2. Fresh Python 3.12 and 3.13 environments passed imports and tiny LightGBM/CatBoost fits using the original pins. Stale in-memory imports after installation are a likely explanation of the original traceback, not a conclusively established root cause. The first setup now tests the disk installation and restarts the Colab session once. Re-run all cells after reconnecting. See [[research/COLAB_ENVIRONMENT_FIX]].
+Keep NumPy **2.2.6**. The traceback uses Python 3.13; Gemini's NumPy 1.26.4 downgrade is unsupported on that Python version and conflicts with installed packages requiring NumPy 2. Fresh Python 3.12 and 3.13 environments passed imports and tiny LightGBM/CatBoost fits using the original pins. Stale in-memory imports after installation are a likely explanation of the original traceback, not a conclusively established root cause.
+
+The later Colab crash is now explained: the saved notebook reports successful imports/model checks on **Python 3.13.16**, then prints the setup-restart message. The kernel log records its restart at **1:33:25 p.m. Toronto time**. The earlier helper called `os.kill(os.getpid(), signal.SIGKILL)`, causing the crash popup before training. Remove this forced restart. Keep notebook controls in the standard library and run input inspection, tuning, training, blend checks and ZIP creation in fresh interpreters. This discards cached numerical imports without ending the notebook session. Reload the new notebook and Run all. See [[research/COLAB_ENVIRONMENT_FIX]].
 
 ## 2026-10-09: controlled feature screening
 

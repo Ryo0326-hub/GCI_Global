@@ -9,12 +9,12 @@ tags: [gci, workflow]
 ## First Colab run
 
 1. Reload the updated [comp.ipynb](https://colab.research.google.com/drive/1sAPtD9Kmf3DiXiyFaLinhfOHHTcuGYZR). If you have unsaved edits, save a separate copy before reloading.
-2. Select Runtime → Run all. The setup cell installs the pinned packages, tests them in a fresh process, and restarts the session once. This expected restart clears cached imports. After Colab reconnects, select Run all again and authorize your own Drive mount.
+2. Select Runtime → Run all. The setup cell installs the pinned packages and tests them in a fresh process. Model steps also use fresh processes, so execution continues without a forced restart. Authorize your own Drive mount when prompted.
 3. Keep B01's five-fold development configuration and the audit disabled.
 4. Wait for each fold and the output checks. Save the notebook with Cmd+S / Ctrl+S before the ZIP cell.
 5. Download `submission.csv` and `comp.zip`, or find them in the Competition Drive folder.
 
-Keep NumPy **2.2.6**. NumPy 1.26.4 is unsupported on the Python 3.13 runtime seen in the traceback. The original pins passed fresh Python 3.12 and 3.13 checks. If setup reports a failed fresh-process check, select Runtime → Disconnect and delete runtime, reopen the updated notebook, and repeat the two-pass setup. See [[research/COLAB_ENVIRONMENT_FIX]].
+Keep NumPy **2.2.6**. NumPy 1.26.4 is unsupported on the Python 3.13 runtime seen in the traceback. The pins passed fresh Python 3.12 and 3.13 checks and the setup's native model checks passed in your actual Colab Python 3.13.16 session. The reported crash was caused by the earlier forced restart, which has been removed. Reload the updated notebook and Run all using the current session. Delete the runtime only if the setup explicitly reports a failed fresh-process check. See [[research/COLAB_ENVIRONMENT_FIX]].
 
 ## Output locations
 

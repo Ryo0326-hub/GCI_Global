@@ -26,7 +26,7 @@ cell("markdown", """# GCI World: Home Credit submission workflow
 
 This is the new competition notebook. The original tutorial is unchanged.
 
-**First run:** choose Runtime → Run all. Setup restarts the session once to clear cached packages. After Colab reconnects, choose Run all again and authorize your own Drive mount. The default compares LightGBM and CatBoost on all 32 supplied predictors and keeps a separate audit set out of model selection.
+**Run:** choose Runtime → Run all and authorize your own Drive mount. Setup verifies the packages, then model steps run in fresh Python processes. The notebook session continues without a forced restart. The default compares LightGBM and CatBoost on all 32 supplied predictors and keeps a separate audit set out of model selection.
 
 Outputs in `MyDrive/GCI_Global/Competition`:
 - `output/submission.csv`: the current format-checked candidate.
@@ -36,8 +36,8 @@ Outputs in `MyDrive/GCI_Global/Competition`:
 
 Local AUC is not the public leaderboard score. Upload to Omnicampus manually and record its score. The **last** submission counts. Only supplied input files are allowed.
 """)
-cell("markdown", "## 1. Install and verify the pinned environment\n\nPython 3.13 needs NumPy 2.x. The tested NumPy 2.2.6 pin remains in place. Setup tests imports and both models in a fresh process, then restarts once to clear Colab's cached packages. After reconnecting, choose Run all again. A matching fresh session continues without another restart. CPU is suitable for these tree models.\n")
-cell("code", """# Keep this setup cell before importing NumPy, pandas, SciPy or sklearn.
+cell("markdown", "## 1. Install and verify the pinned environment\n\nThe tested NumPy 2.2.6 pin supports this Python 3.13 runtime. Setup tests imports and both models in a fresh process. Training, tuning and packaging also use fresh processes so old cached imports in the notebook cannot affect them. Run all continues after setup. CPU is suitable for these tree models.\n")
+cell("code", """# Setup and notebook controls use the Python standard library.
 from pathlib import Path
 import importlib
 import sys
@@ -83,15 +83,16 @@ print('Code ZIP:', current_dir / 'comp.zip')
 """)
 cell("markdown", "## 3. The reproducible pipeline\n\nThis cell writes the complete training/export implementation. It is included in the ZIP so reproduction does not depend on an unsaved notebook. References appear in the final bibliography.\n")
 cell("code", "%%writefile gci_pipeline.py\n" + pipeline)
-cell("code", """import importlib
-import sys
-sys.path.insert(0, str(runtime_dir))
-import gci_pipeline as gci
-gci = importlib.reload(gci)
+cell("code", """def pipeline_step(code, **payload):
+    return gci_environment.run_step(runtime_dir, code, payload, pins=environment_result['packages'])
 
-train, test, sample_sub, input_hashes = gci.load_inputs(input_dir)
-print('Train:', train.shape, 'Test:', test.shape)
-print('Default rate:', f'{train.TARGET.mean():.4%}')
+input_summary = pipeline_step('''
+train, test, sample_sub, input_hashes = gci.load_inputs(payload['input_dir'])
+result = {'train_shape': list(train.shape), 'test_shape': list(test.shape),
+          'default_rate': float(train.TARGET.mean()), 'input_hashes': input_hashes}
+''', input_dir=str(input_dir))
+print('Train:', input_summary['train_shape'], 'Test:', input_summary['test_shape'])
+print('Default rate:', f"{input_summary['default_rate']:.4%}")
 print('Input bytes match the audited dataset.')
 """)
 cell("markdown", """## 4. Configure one experiment
@@ -100,7 +101,7 @@ Start with B01. For a controlled feature experiment, change `label` and add one 
 
 Keep `evaluate_audit=False` while experimenting. Use a second `seed` when confirming a candidate. Later, after freezing choices, switch to `mode='final'`, `frozen_choices=True`, and supply the selected `blend_weights`. Final mode includes all labeled rows and has no independent audit score.
 """)
-cell("code", """config = gci.Config(
+cell("code", """config = dict(
     label='B01_all_features',
     mode='development',
     models=('lightgbm', 'catboost'),
@@ -123,38 +124,53 @@ OPTUNA_TIMEOUT_SECONDS = 3600
 """)
 cell("markdown", "## 5. Optional Optuna tuning\n\nDisabled for the first baseline. Searches only development rows, persists its study, and uses three folds. Confirm the selected parameters with the five-fold run below. The trial count is additional trials when resuming.\n")
 cell("code", """if RUN_OPTUNA:
-    best_params = gci.tune_model(input_dir, output_dir / 'studies', config,
-                                 model_name=OPTUNA_MODEL, n_trials=OPTUNA_TRIALS,
-                                 timeout=OPTUNA_TIMEOUT_SECONDS)
-    config.model_params[OPTUNA_MODEL] = best_params
+    best_params = pipeline_step('''
+result = gci.tune_model(payload['input_dir'], payload['study_dir'], gci.Config(**payload['config']),
+                        model_name=payload['model_name'], n_trials=payload['n_trials'],
+                        timeout=payload['timeout'])
+''', input_dir=str(input_dir), study_dir=str(output_dir / 'studies'), config=config,
+        model_name=OPTUNA_MODEL, n_trials=OPTUNA_TRIALS, timeout=OPTUNA_TIMEOUT_SECONDS)
+    config['model_params'][OPTUNA_MODEL] = best_params
     print('Parameters selected for confirmation:', best_params)
 else:
-    print('Optuna disabled: running the baseline configuration.')
+    print('Optuna disabled: using the configured experiment.')
 """)
 cell("markdown", "## 6. Train, validate and produce submission.csv\n\nEach fold reports progress. Earlier runs are retained even though `output/submission.csv` points to the most recent completed candidate.\n")
-cell("code", """manifest = gci.run_experiment(input_dir, output_dir, config, notes_dir=notes_dir)
+cell("code", """manifest = pipeline_step('''
+result = gci.run_experiment(payload['input_dir'], payload['output_dir'],
+                            gci.Config(**payload['config']), notes_dir=payload['notes_dir'])
+''', input_dir=str(input_dir), output_dir=str(output_dir), notes_dir=str(notes_dir), config=config)
 submission_path = output_dir / 'submission.csv'
-submission = gci.pd.read_csv(submission_path)
-gci.validate_submission(submission, sample_sub)
-display(submission.head())
+import csv
+from itertools import islice
+with submission_path.open(newline='') as stream:
+    for row in islice(csv.DictReader(stream), 5):
+        print(row)
 print('Selected model:', manifest['selected_name'])
 print('Local OOF AUC:', manifest['selected_oof_auc'])
-print('Submission rows:', len(submission))
+print('Submission rows:', manifest['test_rows'])
 print('SHA-256:', manifest['submission_sha256'])
 """)
 cell("markdown", "## 7. Optional blend diagnostic\n\nThe run initially selects a standalone model. This cell proposes coarse blend weights without changing its submission. Review the meta-validation results and confirm any blend on a frozen audit run.\n")
 cell("code", """CHECK_BLEND = False
 if CHECK_BLEND:
-    proposed_weights, blend_table = gci.select_blend(manifest['run_dir'], config.seed)
-    display(blend_table)
-    print('Proposed weights:', proposed_weights)
-    print('To test them, set config.blend_weights and use a new experiment label.')
+    blend_result = pipeline_step('''
+weights, table = gci.select_blend(payload['run_dir'], payload['seed'])
+result = {'weights': weights, 'table': table.to_dict(orient='records')}
+''', run_dir=manifest['run_dir'], seed=config['seed'])
+    for row in blend_result['table']:
+        print(row)
+    print('Proposed weights:', blend_result['weights'])
+    print("To test them, set config['blend_weights'] and use a new experiment label.")
 """)
 cell("markdown", """## 8. Save the notebook and package the matching code ZIP
 
 Press **Ctrl+S / Cmd+S** in Colab before this cell. The ZIP checks that the saved notebook contains the executed pipeline. It includes the frozen run configuration and matching CSV. Input datasets and fitted-model files are omitted from the ZIP; the included command regenerates the submission from the allowed inputs.
 """)
-cell("code", "(current_dir / 'CITATIONS.md').write_text(" + repr(citations) + ")\n" + """zip_path = gci.build_bundle(current_dir, manifest, notebook_path=current_dir / 'comp.ipynb')
+cell("code", "(current_dir / 'CITATIONS.md').write_text(" + repr(citations) + ")\n" + """zip_path = Path(pipeline_step('''
+result = str(gci.build_bundle(payload['project_dir'], payload['manifest'],
+                              notebook_path=payload['notebook_path']))
+''', project_dir=str(current_dir), manifest=manifest, notebook_path=str(current_dir / 'comp.ipynb')))
 print('Verified code ZIP:', zip_path)
 print('Verified submission CSV:', submission_path)
 

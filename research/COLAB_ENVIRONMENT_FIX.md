@@ -2,19 +2,31 @@
 
 [[00 Dashboard]] · [[02 Runbook]] · [[06 Decisions]]
 
-The original pinned NumPy 2.2.6 stack passed fresh Python 3.12 and 3.13 checks. Keep those pins. Gemini's downgrade to NumPy 1.26.4 conflicts with packages requiring NumPy 2 and is unsupported on the Python 3.13 runtime in the traceback. NumPy's release notes list Python 3.9–3.12 for 1.26.4. [NumPy release notes](https://numpy.org/devdocs/release/1.26.4-notes.html)
+The reported session crash was caused by the setup's own forced restart. That code has been removed. Setup and notebook controls now use standard-library code, and each numerical step runs in a fresh Python interpreter with progress streamed back to the notebook. Reload the updated notebook and choose Runtime → Run all.
 
-## Observed failure and evidence
+## Confirmed crash cause
 
-The saved Colab traceback entered `/usr/local/lib/python3.13/dist-packages`, then sklearn, SciPy's NumPy compatibility layer, `numpy.strings`, and `_override___module__`. Assigning `ufunc.__module__ = "numpy.strings"` raised an AttributeError. Only the installation cell had been changed to NumPy 1.26.4; other source cells matched the generated notebook. The failed Drive notebook is preserved locally in `qa/colab_before_fix.ipynb` outside Git.
+The saved Drive notebook, modified at **1:33:36 p.m. Toronto time**, records this successful setup on **Python 3.13.16**:
 
-Stale in-memory NumPy objects after an installation are a likely explanation of the original error. That is an inference: a fresh environment with NumPy 2.2.6 imports the same strings path successfully, so the traceback does not establish blanket incompatibility between NumPy 2 and these pinned SciPy/sklearn versions. NumPy documents old or inconsistent installations as an import-error cause. [NumPy troubleshooting](https://numpy.org/doc/stable/user/troubleshooting-importerror.html)
+> NumPy strings, SciPy sparse, sklearn, LightGBM and CatBoost tiny fits passed
 
-The original setup relied on Colab's restart prompt. It should have enforced a restart before importing the changed packages.
+It then prints the setup-restart message. The supplied log records `AsyncIOLoopKernelRestarter: restarting kernel (1/5)` at **1:33:25 p.m.** The embedded helper called `os.kill(os.getpid(), signal.SIGKILL)` immediately after successful validation. That ended the kernel and produced Colab's crash popup. Training cells had not executed.
 
-## Repair
+The frozen-module debugger warnings and websocket timeout adjustment are startup messages. They are not evidence of a model exception or exhausted RAM in this incident. The log and saved notebook jointly identify the intentional kill as the cause.
 
-The notebook writes a standard-library setup helper before importing numerical packages. It checks Python and installed versions, installs the exact requirements when needed, and tests imports and tiny model fits in a fresh subprocess. On the first setup or a changed stack, it writes a setup marker and terminates the notebook kernel once to clear cached imports. Colab reconnects; choosing Run all again continues with the tested packages. The marker includes pins, Python version and the old process ID so the fresh session does not restart repeatedly.
+The exact saved notebook and supplied log are preserved outside Git in `qa/colab_crash_before.ipynb` and `qa/colab_crash_log.csv`.
+
+## Earlier NumPy failure
+
+Keep NumPy **2.2.6**. Gemini's downgrade to 1.26.4 conflicts with installed packages requiring NumPy 2 and is unsupported on Python 3.13. NumPy's release notes list Python 3.9–3.12 for 1.26.4. [NumPy release notes](https://numpy.org/devdocs/release/1.26.4-notes.html)
+
+The original traceback entered sklearn, SciPy's NumPy compatibility layer and `numpy.strings`, where assigning a ufunc module attribute failed. Stale in-memory objects after installation remain a likely explanation; this is an inference rather than a conclusively established cause. Fresh environments with the pinned stack, including the actual Colab setup above, passed that import path. [NumPy troubleshooting](https://numpy.org/doc/stable/user/troubleshooting-importerror.html)
+
+## Current execution design
+
+Setup installs the exact pins when needed and tests them in a fresh subprocess. It returns a verified package summary without importing numerical packages into the notebook kernel or stopping that kernel. Input inspection, Optuna, cross-validation, blend diagnostics and ZIP creation each start a fresh interpreter using the embedded pipeline and the verified pins. Results return as JSON; fold progress and exceptions remain visible. Cancellation terminates the active worker rather than leaving training running.
+
+The training pipeline, features, splits, model settings, CSV contract and Drive destinations remain those of the measured experiments. The notebook configuration is a plain dictionary which is converted to the pipeline's Config inside each worker. Earlier fitted runs and their recorded CSV hashes retain their original meaning.
 
 | Package | Pin |
 | --- | --- |
@@ -27,17 +39,15 @@ The notebook writes a standard-library setup helper before importing numerical p
 | Optuna | 4.4.0 |
 | joblib | 1.5.1 |
 
-## Validation and remaining check
+## Validation and next action
 
-Fresh local Python **3.12.12** and **3.13.11** environments passed all six tests, notebook schema/source checks, NumPy string operations, SciPy sparse construction, sklearn AUC, and tiny LightGBM/CatBoost fits. Tests cover restart-once behavior, changed versions, stale imports and rejection of NumPy 1 on Python 3.13. GitHub checks run the same validations on Linux for both Python versions.
+Fresh local Python **3.12.12** and **3.13.11** environments passed eight tests. The new regression checks deliberately place stale modules in the parent process, verify that workers import the on-disk modules, ensure the parent survives setup, and check worker errors and temporary-file cleanup. Notebook validation checks all five worker snippets, source hashes, dependency pins and the absence of numerical imports in the notebook kernel.
 
-The updated notebook was saved to its existing Drive file ID with the same folder and Colab MIME type, and downloaded bytes matched the local file. This verifies the saved artifact; a complete live Colab training/export run is still pending.
-
-Verified notebook SHA-256: `befa4a49836bea88ed890c336b3223cc079f3711f40690d24b973e56ec9a2e1f` (62,560 bytes; Drive file ID `1sAPtD9Kmf3DiXiyFaLinhfOHHTcuGYZR`).
+A bounded local test executes the generated notebook controls, verifies the real competition input hashes, then uses the existing 3,000-row development-only fixture for one Optuna trial, both model families, blend diagnostics, and matching CSV/code ZIP/report export. Its scores are test results, not competition evidence. This excludes live Drive authorization and Colab UI interaction; a complete hosted training/export run still needs confirmation.
 
 1. Reload [comp.ipynb in Colab](https://colab.research.google.com/drive/1sAPtD9Kmf3DiXiyFaLinhfOHHTcuGYZR).
-2. Choose Runtime → Run all. The setup restart is expected.
-3. After reconnecting, choose Run all again. The setup prints `Environment ready. Training can continue.` before mounting Drive.
-4. If the fresh-process check fails, choose Runtime → Disconnect and delete runtime and repeat these steps.
+2. Choose Runtime → Run all and authorize your Drive mount.
+3. Setup should print `Environment ready. Run all continues; model steps use fresh Python processes.` and continue.
+4. Save with Cmd+S / Ctrl+S before the code ZIP cell.
 
-Do not replace the NumPy pin with 1.26.4. The supplied pip conflicts were caused by that downgrade.
+Use the current session after the earlier restart. Delete the runtime only if a fresh-process check explicitly fails. Do not downgrade NumPy.

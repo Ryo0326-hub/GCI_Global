@@ -14,17 +14,27 @@ pins = dict(line.split("==") for line in (root / "requirements.txt").read_text()
 embedded = []
 embedded_environments = []
 embedded_pins = []
+worker_steps = 0
 for cell in notebook.cells:
     if cell.cell_type != "code":
         continue
     source = cell.source
-    if source.startswith("%%writefile gci_pipeline.py\n"):
+    pipeline_cell = source.startswith("%%writefile gci_pipeline.py\n")
+    if pipeline_cell:
         embedded.append(source.split("\n", 1)[1])
         source = embedded[-1]
     else:
         source = "\n".join(line for line in source.splitlines() if not line.lstrip().startswith("%"))
     tree = ast.parse(source)
     for node in ast.walk(tree):
+        if not pipeline_cell and isinstance(node, (ast.Import, ast.ImportFrom)):
+            modules = [node.module] if isinstance(node, ast.ImportFrom) else [alias.name for alias in node.names]
+            heavy = {"numpy", "pandas", "scipy", "sklearn", "lightgbm", "catboost", "gci_pipeline"}
+            if any(module and module.split('.')[0] in heavy for module in modules):
+                raise ValueError("Numerical packages must be imported in a fresh worker, not the notebook kernel.")
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "pipeline_step":
+            ast.parse(ast.literal_eval(node.args[0]))
+            worker_steps += 1
         if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
             continue
         if isinstance(node.func.value, ast.Name) and node.func.value.id == "environment_file" and node.func.attr == "write_text":
@@ -39,4 +49,6 @@ if embedded_environments != [environment] or embedded_pins != [pins]:
     raise ValueError("Notebook environment setup differs from its source or requirements. Run scripts/build_notebook.py.")
 if notebook.metadata.gci.environment_sha256 != hashlib.sha256(environment.encode()).hexdigest():
     raise ValueError("Notebook environment hash differs from its source.")
-print(f"Validated {len(notebook.cells)} cells: schema, syntax, embedded pipeline, setup and dependency pins.")
+if worker_steps != 5:
+    raise ValueError("Expected fresh-process input, tuning, training, blend and packaging steps.")
+print(f"Validated {len(notebook.cells)} cells: schema, syntax, pipeline/setup hashes, pins and {worker_steps} isolated steps.")

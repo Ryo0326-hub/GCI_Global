@@ -12,14 +12,14 @@ Build evidence that the next model generalizes better, then submit the strongest
 
 | Item | Current state |
 | --- | --- |
-| Stage | Public baseline recorded; Colab restart fix saved; feature screening completed |
+| Stage | Public baseline recorded; Colab forced restart removed; feature screening completed |
 | Public result | B01 CatBoost: 0.756, rank 668, reported October 9 |
 | Target | First 0.80 ROC AUC; 0.85 is a stretch goal. Earlier leader snapshot: 0.79169 |
 | Deadline | Nov 19, 2026, 8 p.m. Toronto time |
 | Final ranking | Last submitted file, evaluated on the full test set |
 | Public champion | B01 CatBoost, local OOF 0.752544 and public 0.756 |
 | Best local candidate | F02 affordability LightGBM: OOF 0.757137; public score pending |
-| Next action | Reload Colab, Run all, reconnect after setup restart, then Run all again. Confirm affordability with CatBoost and another fold seed |
+| Next action | Reload the updated Colab notebook and Run all. Confirm affordability with CatBoost and another fold seed |
 
 ## Latest run
 

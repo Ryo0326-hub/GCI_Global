@@ -6,14 +6,14 @@ An independent competition notebook and an Obsidian project vault. The workflow 
 
 ## Start in Colab
 
-1. Reload the updated `comp.ipynb` and choose **Runtime → Run all**. Setup verifies the pins and restarts the session once to clear cached imports. After reconnecting, choose **Run all again** and authorize your own Drive mount.
+1. Reload the updated `comp.ipynb` and choose **Runtime → Run all**. Setup verifies the pins and continues. Authorize your own Drive mount when prompted.
 2. Keep the first run's B01 configuration. It fits five development folds and reserves 20% of labeled rows for a later audit.
 3. Save the notebook before packaging. Check that the CSV contains 61,500 rows and the ZIP verification succeeds.
 4. Review the experiment report before uploading the CSV and matching code ZIP to Omnicampus. Record the returned public score in the Submission Tracker.
 
 The notebook uses `MyDrive/GCI_Global/Competition/input/{train.csv,test.csv,sample_submission.csv}` and verifies the original file hashes. The original tutorial is preserved.
 
-The pinned stack uses **NumPy 2.2.6** and passed fresh Python **3.12 and 3.13** checks, including both model libraries. Do not downgrade to NumPy 1.26.4 on Python 3.13. The setup cell checks package versions and avoids a restart loop. See `research/COLAB_ENVIRONMENT_FIX.md` for diagnosis and recovery.
+The pinned stack uses **NumPy 2.2.6** and passed fresh Python **3.12 and 3.13** checks, including both model libraries. Do not downgrade to NumPy 1.26.4 on Python 3.13. Setup and notebook controls use standard-library code; numerical steps run in fresh processes with streamed progress. This avoids stale notebook imports and requires no forced kernel restart. See `research/COLAB_ENVIRONMENT_FIX.md` for diagnosis and recovery.
 
 | Output | Drive path under GCI_Global/Competition |
 | --- | --- |
