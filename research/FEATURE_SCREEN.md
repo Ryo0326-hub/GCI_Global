@@ -35,8 +35,10 @@ F02 run ID: `20261009T050024803961Z_F02_affordability`. It generated 61,500 form
 Re-running all five F02 folds from the frozen configuration reproduced the original CSV bytes exactly. Its fold-assignment file also matches B01 byte for byte. The separate candidate package passed archive integrity and every included-file hash check. It contains a notebook configured for F02 and the same frozen reproduction configuration.
 
 - [submission_F02.csv in Drive](https://drive.google.com/file/d/1x-DY1CpWPt4lBadoksqwhIXexL6TODh3/view), under `GCI_Global/Competition/output/`.
-- [comp_F02.zip in Drive](https://drive.google.com/file/d/1LEvfOpsbYZt32mGrFW_y-gBpB6sbYH8x/view), under `GCI_Global/Competition/`; ZIP SHA-256 `b93afac8684f26f0ee63b071709dfcb41e95e5baac474d272050868dd24ad86a`.
+- [comp_F02.zip in Drive](https://drive.google.com/file/d/1LEvfOpsbYZt32mGrFW_y-gBpB6sbYH8x/view), under `GCI_Global/Competition/`; current ZIP SHA-256 `92e978e0da2cfe6a84aa7f58c61f1df0fc5cf7da58ff2fd796e76e108d0272a1`.
 - Local pair: `output/candidates/F02_affordability/`. No Omnicampus upload is automated.
+
+The F02 code ZIP was refreshed October 9 with the notebook's fresh-process execution fix. The CSV, executed training pipeline and frozen configuration are unchanged. The old ZIP with hash `b93afac8684f26f0ee63b071709dfcb41e95e5baac474d272050868dd24ad86a` is retained locally as `comp_F02_before_process_fix.zip`. Downloaded bytes of the refreshed Drive ZIP matched the verified local package.
 
 After verifying Colab setup, use the F02 settings in [[02 Runbook]]. Next compare CatBoost with the same affordability group, then confirm the strongest candidate on a second fold seed. Tune only development rows and confirm tuned settings with five folds. Keep audit disabled until the planned finalist freeze.
 

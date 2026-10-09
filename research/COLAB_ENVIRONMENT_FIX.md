@@ -45,6 +45,8 @@ Fresh local Python **3.12.12** and **3.13.11** environments passed eight tests. 
 
 A bounded local test executes the generated notebook controls, verifies the real competition input hashes, then uses the existing 3,000-row development-only fixture for one Optuna trial, both model families, blend diagnostics, and matching CSV/code ZIP/report export. Its scores are test results, not competition evidence. This excludes live Drive authorization and Colab UI interaction; a complete hosted training/export run still needs confirmation.
 
+The fixed notebook was saved to the same Drive ID and folder. Its downloaded bytes match the local notebook: SHA-256 `a354e25a19a3ad9ba4f35ed46cf58c3760a1e23fefda271c3575c73316d1c562` (64,422 bytes). [GitHub checks passed on Python 3.12 and 3.13](https://github.com/Ryo0326-hub/GCI_Global/actions/runs/37968625620). The F02 code ZIP was refreshed with the same execution design, while retaining its original matching CSV and frozen configuration.
+
 1. Reload [comp.ipynb in Colab](https://colab.research.google.com/drive/1sAPtD9Kmf3DiXiyFaLinhfOHHTcuGYZR).
 2. Choose Runtime → Run all and authorize your Drive mount.
 3. Setup should print `Environment ready. Run all continues; model steps use fresh Python processes.` and continue.
