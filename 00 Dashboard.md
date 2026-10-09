@@ -8,7 +8,7 @@ tags: [gci, home-credit]
 
 Build evidence that the next model generalizes better, then submit the strongest reproducible candidate.
 
-[Open comp.ipynb in Colab](https://colab.research.google.com/drive/1sAPtD9Kmf3DiXiyFaLinhfOHHTcuGYZR) · [Competition folder in Drive](https://drive.google.com/drive/folders/106aE1f2Nz4pRZ1EGtryNFhgvo74451sC)
+[Open comp.ipynb in Colab](https://colab.research.google.com/drive/1sAPtD9Kmf3DiXiyFaLinhfOHHTcuGYZR) · [Competition folder in Drive](https://drive.google.com/drive/folders/106aE1f2Nz4pRZ1EGtryNFhgvo74451sC) · [GitHub project](https://github.com/Ryo0326-hub/GCI_Global)
 
 | Item | Current state |
 | --- | --- |
