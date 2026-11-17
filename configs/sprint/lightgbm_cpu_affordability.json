@@ -1,0 +1,26 @@
+{
+  "label": "S17_lightgbm_cpu_affordability",
+  "mode": "development",
+  "models": [
+    "lightgbm"
+  ],
+  "feature_groups": [
+    "affordability"
+  ],
+  "seed": 42,
+  "audit_seed": 20261009,
+  "audit_fraction": 0.2,
+  "n_splits": 5,
+  "max_iterations": 2000,
+  "early_stopping": 150,
+  "threads": 4,
+  "evaluate_audit": false,
+  "verify_input_hashes": true,
+  "frozen_choices": false,
+  "model_params": {
+    "lightgbm": {
+      "device_type": "cpu"
+    }
+  },
+  "blend_weights": null
+}

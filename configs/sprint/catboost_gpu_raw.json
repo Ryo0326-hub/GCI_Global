@@ -1,0 +1,25 @@
+{
+  "label": "S17_catboost_GPU_raw",
+  "mode": "development",
+  "models": [
+    "catboost"
+  ],
+  "feature_groups": [],
+  "seed": 42,
+  "audit_seed": 20261009,
+  "audit_fraction": 0.2,
+  "n_splits": 5,
+  "max_iterations": 2000,
+  "early_stopping": 150,
+  "threads": 4,
+  "evaluate_audit": false,
+  "verify_input_hashes": true,
+  "frozen_choices": false,
+  "model_params": {
+    "catboost": {
+      "task_type": "GPU",
+      "devices": "0"
+    }
+  },
+  "blend_weights": null
+}

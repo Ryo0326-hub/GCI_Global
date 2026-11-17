@@ -243,27 +243,35 @@ def fit_cv(x, y, test_x, ids, cfg, output_dir=None, audit_x=None, trial=None):
             processor = FeatureProcessor(cfg.feature_groups, name).fit(x.iloc[tr])
             train_x, valid_x = processor.transform(x.iloc[tr]), processor.transform(x.iloc[va])
             params = {**model_defaults(name, cfg), **cfg.model_params.get(name, {})}
+            requested_backend = params.get("task_type", params.get("device_type", "CPU"))
+            print(f"{name} fold {fold + 1}/{cfg.n_splits}: starting on {requested_backend}", flush=True)
             if name == "lightgbm":
                 import lightgbm as lgb
                 model = lgb.LGBMClassifier(**params)
                 model.fit(train_x, y.iloc[tr], eval_set=[(valid_x, y.iloc[va])],
                           callbacks=[lgb.early_stopping(cfg.early_stopping, first_metric_only=True, verbose=False)])
                 best_iteration = int(model.best_iteration_ or cfg.max_iterations)
+                backend = str(model.booster_.params.get("device_type", "CPU")).upper()
             else:
                 from catboost import CatBoostClassifier
                 model = CatBoostClassifier(**params)
                 model.fit(train_x, y.iloc[tr], cat_features=processor.categorical,
                           eval_set=(valid_x, y.iloc[va]), early_stopping_rounds=cfg.early_stopping, use_best_model=True)
                 best_iteration = int(model.tree_count_)
+                backend = model.get_all_params()["task_type"]
+                if str(requested_backend).upper() != backend:
+                    raise RuntimeError(f"Requested {requested_backend}, fitted {backend}")
             oof[va] = model.predict_proba(valid_x)[:, 1]
             if test_pred is not None:
                 test_pred += model.predict_proba(processor.transform(test_x))[:, 1] / cfg.n_splits
             if audit_pred is not None:
                 audit_pred += model.predict_proba(processor.transform(audit_x))[:, 1] / cfg.n_splits
             metric = {"fold": fold, "auc": float(roc_auc_score(y.iloc[va], oof[va])),
-                      "best_iteration": best_iteration, "seconds": round(time.monotonic() - started, 2)}
+                      "best_iteration": best_iteration, "seconds": round(time.monotonic() - started, 2),
+                      "backend": backend}
             fold_metrics.append(metric)
-            print(f"{name} fold {fold + 1}/{cfg.n_splits}: AUC={metric['auc']:.6f}, trees={best_iteration}", flush=True)
+            print(f"{name} fold {fold + 1}/{cfg.n_splits}: AUC={metric['auc']:.6f}, trees={best_iteration}, "
+                  f"backend={backend}, seconds={metric['seconds']}", flush=True)
             if output_dir is not None:
                 joblib.dump({"processor": processor, "model": model}, Path(output_dir) / f"{name}_fold_{fold}.joblib")
                 if hasattr(model, "feature_importances_"):
@@ -314,6 +322,7 @@ def write_report(manifest, note_dir):
     note_dir.mkdir(parents=True, exist_ok=True)
     run_id = manifest["run_id"]
     cfg = manifest["config"]
+    score_label = "Development OOF AUC" if cfg["mode"] == "development" else "Final-training OOF AUC (not independent audit)"
     rows = "\n".join(f"| {name} | {values['oof_auc']:.6f} |" for name, values in manifest["model_metrics"].items())
     audit_text = (f"Audit AUC: {manifest['audit_auc']:.6f}. Audit has now been inspected."
                   if manifest["audit_auc"] is not None else "Audit labels were not evaluated.")
@@ -333,7 +342,7 @@ tags: [gci, experiment, generated]
 
 {manifest['selected_name']} generated {manifest['test_rows']:,} model probabilities. No competition upload occurred.
 
-| Model | Development OOF AUC |
+| Model | {score_label} |
 | --- | --- |
 {rows}
 
@@ -378,6 +387,8 @@ def run_experiment(input_dir, output_dir, cfg=None, notes_dir=None):
     run_dir = output_dir / "runs" / run_id
     run_dir.mkdir(parents=True, exist_ok=False)
     save_json(run_dir / "config.json", asdict(cfg))
+    executed_source_hash = sha256(__file__)
+    shutil.copy2(__file__, run_dir / "gci_pipeline.py")
     results = fit_cv(x, y, test_x, ids, cfg, run_dir, audit_x)
     if cfg.blend_weights is None:
         selected_name = max(results["metrics"], key=lambda name: results["metrics"][name]["oof_auc"])
@@ -407,7 +418,11 @@ def run_experiment(input_dir, output_dir, cfg=None, notes_dir=None):
     cfg_frozen["blend_weights"] = weights
     save_json(run_dir / "reproduce_config.json", cfg_frozen)
     package_versions = {name: version(name) for name in PACKAGES}
-    manifest = {"pipeline_version": PIPELINE_VERSION, "pipeline_sha256": sha256(__file__),
+    if sha256(__file__) != executed_source_hash:
+        raise RuntimeError("Pipeline changed during training. Incomplete run was not promoted.")
+    (run_dir / "requirements.lock.txt").write_text("\n".join(f"{name}=={value}" for name, value in package_versions.items()) + "\n")
+    artifact_hashes = {p.name: sha256(p) for p in run_dir.iterdir() if p.is_file()}
+    manifest = {"pipeline_version": PIPELINE_VERSION, "pipeline_sha256": executed_source_hash,
                 "run_id": run_id, "created_utc": created.isoformat(), "config": asdict(cfg),
                 "input_hashes": hashes, "package_versions": package_versions,
                 "training_rows": len(train), "development_rows": len(development), "audit_rows": len(audit),
@@ -415,9 +430,9 @@ def run_experiment(input_dir, output_dir, cfg=None, notes_dir=None):
                 "model_metrics": results["metrics"], "selected_weights": weights, "selected_name": selected_name,
                 "selected_oof_auc": float(roc_auc_score(y, selected_oof)), "audit_auc": audit_auc,
                 "submission_sha256": sha256(run_dir / "submission.csv"), "competition_upload": False,
-                "seconds": round(time.monotonic() - started, 2), "run_dir": str(run_dir.resolve())}
+                "seconds": round(time.monotonic() - started, 2), "run_dir": str(run_dir.resolve()),
+                "artifact_hashes": artifact_hashes}
     save_json(run_dir / "manifest.json", manifest)
-    (run_dir / "requirements.lock.txt").write_text("\n".join(f"{name}=={value}" for name, value in package_versions.items()) + "\n")
     shutil.copy2(run_dir / "submission.csv", output_dir / "submission.csv")
     save_json(output_dir / "latest_run.json", manifest)
     if notes_dir is not None:
@@ -434,6 +449,42 @@ def run_experiment(input_dir, output_dir, cfg=None, notes_dir=None):
     print(f"Selected {selected_name}, local OOF AUC={manifest['selected_oof_auc']:.6f}", flush=True)
     print(f"Submission checked: {output_dir / 'submission.csv'}", flush=True)
     return manifest
+
+
+def verify_saved_predictions(input_dir, run_dir):
+    """Recreate a completed run from its trusted local models, without retraining."""
+    run_dir = Path(run_dir)
+    manifest = json.loads((run_dir / "manifest.json").read_text())
+    cfg = Config(**manifest["config"])
+    if manifest["pipeline_sha256"] != sha256(__file__):
+        raise ValueError("Use the executed pipeline saved with this run")
+    for name, expected in manifest["artifact_hashes"].items():
+        if sha256(run_dir / name) != expected:
+            raise ValueError(f"Run artifact changed: {name}")
+    _, test, sample, hashes = load_inputs(input_dir, cfg.verify_input_hashes)
+    if hashes != manifest["input_hashes"]:
+        raise ValueError("Run input bytes changed")
+    x = make_features(test, cfg.feature_groups)
+    prediction = np.zeros(len(test))
+    for name in cfg.models:
+        model_prediction = np.zeros(len(test))
+        for fold in range(cfg.n_splits):
+            saved = joblib.load(run_dir / f"{name}_fold_{fold}.joblib")
+            model_prediction += saved["model"].predict_proba(saved["processor"].transform(x))[:, 1] / cfg.n_splits
+        prediction += manifest["selected_weights"].get(name, 0) * model_prediction
+    reproduced = make_submission(sample, test.SK_ID_CURR, prediction)
+    original = pd.read_csv(run_dir / "submission.csv", float_precision="round_trip")
+    validate_submission(original, sample)
+    error = float(np.max(np.abs(reproduced.TARGET.to_numpy() - original.TARGET.to_numpy())))
+    if error > 1e-12:
+        raise ValueError(f"Saved models do not reproduce the frozen submission: max error {error}")
+    regenerated_hash = hashlib.sha256(reproduced.to_csv(index=False, lineterminator="\n").encode()).hexdigest()
+    report = {"rows": len(original), "max_absolute_error": error,
+              "submission_sha256": sha256(run_dir / "submission.csv"),
+              "regenerated_sha256": regenerated_hash,
+              "byte_identical": regenerated_hash == manifest["submission_sha256"]}
+    save_json(run_dir / "saved_model_verification.json", report)
+    return report
 
 
 def tune_model(input_dir, study_dir, cfg, model_name="lightgbm", n_trials=20, timeout=3600):
