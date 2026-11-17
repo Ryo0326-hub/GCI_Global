@@ -14,6 +14,24 @@ tags: [gci, submissions]
 | November 17 verification | F02 affordability LightGBM | 0.757137 | 0.76253 | 3,237 | `41fb2033` |
 | November 17 user result | S17 v1 shallow CPU CatBoost | 0.760200 | **0.76365** | **2,918** | `4e44b9f3` |
 
+## S17 v2 — ready, not yet submitted
+
+[CSV](https://drive.google.com/file/d/1NNzbcs0UK3ZUbuHh6GaBXzwLUlYFHHMe/view) · [matching code ZIP](https://drive.google.com/file/d/1ir2pw5r823k55DYfxxTIXifON-keQ_jv/view)
+
+- Final run: [[Experiments/Runs/20261117T193823071888Z_S17_v2_final]]. Equal CPU CatBoost/XGBoost; five fitted folds per family.
+- Development selection AUC: **0.763037**. Reserved audit AUC: **0.764923** (one pre-frozen comparison).
+- Full-population final-training OOF AUC: **0.764534**. This uses all 171,202 labelled rows across folds and is **not independent audit evidence**.
+- Public AUC / rank / competition upload time: **unknown; not submitted by the agent**.
+- CSV SHA-256: `9fb3842240f920de8527e6e48eedc635238d49b5cdd6041465bf6b2052465032`.
+- Matching ZIP SHA-256: `011a0bf867a55462dde2520e86d8ba4892a5c2b42d0e4c677d24c987419fa399`.
+- Exactly 61,500 rows in sample ID order, valid probabilities, no index column. Saved-model predictions are byte-identical, with maximum absolute error 0.
+- Both versioned and canonical Drive CSV/ZIP copies were downloaded again and matched their hashes. The notebook embeds the same executed source and final configuration.
+- Current Drive exports: `GCI_Global/Competition/output/submission.csv` and `GCI_Global/Competition/comp.zip`. Versioned files above remain stable when later runs replace the current exports.
+- [Saved models and run evidence](https://drive.google.com/file/d/14d4sl28TSj9U0sAYF4b6F9OHtClsYuMn/view) · [Obsidian run reports](https://drive.google.com/file/d/18Io3M2AZ3E193W00ZNPpIoQhaKjbG-gs/view).
+- Earlier B01 current exports were renamed to historical filenames, preserving file IDs and bytes. F02 and S17 v1 remain unchanged.
+
+Upload the CSV and this matching ZIP, wait for completed scoring, then record its score/rank and upload time. **No notebook rerun is needed to use these files.** This candidate does not yet establish the >=0.80 target or honours placement.
+
 ## S17 v1
 
 [Submission CSV](https://drive.google.com/file/d/1E9FVLIg9pU71J-kSKYORG8CaavSIZICD/view) · [Matching code ZIP](https://drive.google.com/file/d/1mqUESU9r72glIu-IysKQu3wynVsZqJHC/view)
@@ -26,7 +44,7 @@ tags: [gci, submissions]
 - Ryo confirmed CSV submission. Matching code-ZIP upload has not been separately confirmed.
 - Scoring display: `2026-11-18 04:06:47`, display timezone not verified. The output identifies November 17, 2026 UTC. Exact upload time is unconfirmed.
 
-S17 improved public AUC by **0.00112** and the reported rank by 319 positions. Public feedback is recorded, not used to optimize row-specific predictions or blend weights. A frozen 50% CatBoost / 50% XGBoost ensemble was selected on the reserved audit (AUC 0.764923) and is now in full-data final training. Its public result is not yet known.
+S17 improved public AUC by **0.00112** and the reported rank by 319 positions. Public feedback is recorded, not used to optimize row-specific predictions or blend weights. A frozen 50% CatBoost / 50% XGBoost ensemble was selected on the reserved audit (AUC 0.764923) and has completed full-data final training. S17 v2 is ready; its public result is not yet known.
 
 ## Preserved earlier submissions
 

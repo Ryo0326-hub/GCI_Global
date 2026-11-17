@@ -6,6 +6,8 @@ An independent competition notebook and an Obsidian project vault. The workflow 
 
 ## Start in Colab
 
+**S17 v2 is ready:** [CSV](https://drive.google.com/file/d/1NNzbcs0UK3ZUbuHh6GaBXzwLUlYFHHMe/view) · [matching code ZIP](https://drive.google.com/file/d/1ir2pw5r823k55DYfxxTIXifON-keQ_jv/view). Upload both files manually; no notebook rerun is needed. Public score is pending.
+
 1. Reload the updated `comp.ipynb`, then **Runtime → Run all**. The frozen final ensemble uses CPU; select a T4 only for a separate GPU experiment. Setup verifies the pins and continues. Authorize your own Drive mount when prompted.
 2. Use the saved sprint configuration in the notebook. Development runs reserve 20% of labelled rows; a frozen final configuration uses all 171,202 labels. The backend preflight must pass before training.
 3. Save the notebook before packaging. Check that the CSV contains 61,500 rows and the ZIP verification succeeds.

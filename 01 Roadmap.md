@@ -26,8 +26,8 @@ Target: **>=0.80 public ROC AUC** and final top 10%. The current evidence is bel
 - [x] Compare CatBoost, LightGBM and XGBoost using aligned OOF predictions.
 - [x] Freeze at most three finalists, including coarse blends.
 - [x] Inspect the reserved audit once, then freeze the final selection.
-- [ ] Refit on all labelled data and verify saved-model inference.
-- [ ] Deliver the final CSV, matching ZIP and updated notebook to Drive.
+- [x] Refit on all labelled data and verify saved-model inference.
+- [x] Deliver the final CSV, matching ZIP and updated notebook to Drive.
 
 ## Ryo's upload steps
 
@@ -35,4 +35,4 @@ Target: **>=0.80 public ROC AUC** and final top 10%. The current evidence is bel
 - [ ] Wait for completed scoring; record score, rank, hash and upload time.
 - [ ] Verify the intended file is the LAST submission before the deadline.
 
-S17 v1 was submitted at public AUC 0.76365. The next candidate is in final training; the earlier candidate remains available in [[04 Submission Tracker]]. It does not require another notebook run. Neural or distributed experiments will not delay the final deliverable.
+S17 v1 was submitted at public AUC 0.76365. S17 v2 is ready for manual upload; both candidates remain available in [[04 Submission Tracker]]. It does not require another notebook run. Neural or distributed experiments will not delay the final deliverable.

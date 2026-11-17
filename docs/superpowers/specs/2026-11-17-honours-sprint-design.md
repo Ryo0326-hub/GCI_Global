@@ -8,7 +8,7 @@ Latest steering: **aim for >=0.80 public ROC AUC**, while retaining the honours/
 
 ## Goal and constraints
 
-Produce the strongest validated, reproducible submission possible before **November 19, 2026, 8 p.m. Toronto time**. Current user-reported result: **0.76253 public AUC, rank 3,237**. Target: top 10%, approximately rank 500. The scored CSV was verified as F02 affordability LightGBM; the observed rank 500 score on November 17 is 0.77032. Final scoring uses the entire test set and the last submitted CSV. Honours requires matching reproducible code.
+Produce the strongest validated, reproducible submission possible before **November 19, 2026, 8 p.m. Toronto time**. Starting user-reported result: **0.76253 public AUC, rank 3,237**. Target: top 10%, approximately rank 500. The scored CSV was verified as F02 affordability LightGBM; the observed rank 500 score on November 17 is 0.77032. Final scoring uses the entire test set and the last submitted CSV. Honours requires matching reproducible code.
 
 Only supplied competition data is permitted. Cite reference code. No external labels, auxiliary Kaggle data, pretrained external model weights, or manual prediction overrides.
 

@@ -8,7 +8,7 @@ tags: [gci, workflow]
 
 ## Run the current notebook
 
-**The November 17 searches and reserved audit are complete.** The final configuration is an equal CPU CatBoost/XGBoost blend; no GPU is required. A completed, verified CSV can be uploaded without rerunning the notebook. The experiment notebook and its outputs are preserved in [the dated Colab copy](https://colab.research.google.com/drive/1JO1rZCLe6dobLMWWvgCYg67TFPKnXVse).
+**The November 17 searches and reserved audit are complete.** The final configuration is an equal CPU CatBoost/XGBoost blend; no GPU is required. The verified S17 v2 CSV and matching ZIP in [[04 Submission Tracker]] can be uploaded without rerunning the notebook. The experiment notebook and its outputs are preserved in [the dated Colab copy](https://colab.research.google.com/drive/1JO1rZCLe6dobLMWWvgCYg67TFPKnXVse).
 
 1. Reload the updated [comp.ipynb](https://colab.research.google.com/drive/1sAPtD9Kmf3DiXiyFaLinhfOHHTcuGYZR). If you have unsaved edits, save a separate copy before reloading.
 2. Select a T4 under Runtime → Change runtime type if the configuration requests GPU, then Runtime → Run all. The setup cell installs the pinned packages and tests them in a fresh process. Model steps also use fresh processes, so execution continues without a forced restart. Authorize your own Drive mount when prompted.
@@ -24,10 +24,11 @@ Keep NumPy **2.2.6**. NumPy 1.26.4 is unsupported on the Python 3.13 runtime see
 | --- | --- |
 | Current candidate | GCI_Global/Competition/output/submission.csv |
 | Matching code package | GCI_Global/Competition/comp.zip |
-| Historical evidence | GCI_Global/Competition/output/runs/run_id/ |
+| Colab-generated historical evidence | GCI_Global/Competition/output/runs/run_id/ |
+| S17 v2 local-run backup | GCI_Global/Competition/S17_v2_run_artifacts.zip |
 | Progress-note archive | GCI_Global/Competition/obsidian_reports.zip |
 
-Each run saves OOF predictions, parameters, package versions, input hashes, fold assignments, fitted models and its executed source snapshot. Packaging first checks saved-model predictions against the frozen CSV. New GPU retraining is not expected to be byte-identical. New runs update the current candidate and preserve earlier run folders. The default blend was frozen and checked on the reserved audit before final training.
+Each run saves OOF predictions, parameters, package versions, input hashes, fold assignments, fitted models and its executed source snapshot. Packaging first checks saved-model predictions against the frozen CSV. Fresh training across platforms can differ numerically; GPU training is also nondeterministic. The saved-model check verifies the recorded CSV under its recorded environment. New runs update the current candidate and preserve earlier run folders. The default blend was frozen and checked on the reserved audit before final training.
 
 ## Import Colab reports into Obsidian
 

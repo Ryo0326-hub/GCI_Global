@@ -79,9 +79,9 @@
 
 - [x] By November 18 evening, select at most three finalists using development evidence. Compare standalone models and coarse probability blends; the current OOF meta-holdout is diagnostic, not independent audit evidence.
 - [x] Freeze features, parameters, backend, seeds and candidate weights before examining audit. Evaluate those finalists once; do not repeatedly tune on audit feedback.
-- [ ] Refit selected models on all 171,202 labelled rows with `mode='final'`, `frozen_choices=True`, and explicit selected `blend_weights`. Do not label final-training CV as an independent audit score.
-- [ ] Retain fitted models and exact configuration/versions; verify saved-model inference reproduces the frozen CSV under its recorded environment. New GPU retraining may differ numerically.
-- [ ] Verify existing final/audit boundary tests still pass and final manifests show full labelled-data use without an independent audit claim.
+- [x] Refit selected models on all 171,202 labelled rows with `mode='final'`, `frozen_choices=True`, and explicit selected `blend_weights`. Do not label final-training CV as an independent audit score.
+- [x] Retain fitted models and exact configuration/versions; verify saved-model inference reproduces the frozen CSV under its recorded environment. New GPU retraining may differ numerically.
+- [x] Verify existing final/audit boundary tests still pass and final manifests show full labelled-data use without an independent audit claim.
 
 ### Task 5: Verify and deliver the candidate
 
@@ -89,10 +89,10 @@
 
 **Interfaces:** Final manifest and predictions produce `submission.csv`, matching `comp.zip`, historical run artifacts and an Obsidian report archive.
 
-- [ ] Reuse existing ID/probability/bundle tests; add a focused regression only when changed behavior introduces a new contract.
-- [ ] Check exactly 61,500 rows, schema `SK_ID_CURR,TARGET`, unique sample-order IDs, finite probabilities in [0,1], and no index column.
-- [ ] Build the ZIP from executed source and frozen configuration. Verify archive integrity and CSV/code hashes. Include citations; keep datasets outside Git.
-- [ ] Save CSV/ZIP in `GCI_Global/Competition` Drive destinations and verify uploaded bytes. If training remotely, package there or resolve artifact locations explicitly; server absolute paths do not become Colab paths automatically.
+- [x] Reuse existing ID/probability/bundle tests; add a focused regression only when changed behavior introduces a new contract.
+- [x] Check exactly 61,500 rows, schema `SK_ID_CURR,TARGET`, unique sample-order IDs, finite probabilities in [0,1], and no index column.
+- [x] Build the ZIP from executed source and frozen configuration. Verify archive integrity and CSV/code hashes. Include citations; keep datasets outside Git.
+- [x] Save CSV/ZIP in `GCI_Global/Competition` Drive destinations and verify uploaded bytes. If training remotely, package there or resolve artifact locations explicitly; server absolute paths do not become Colab paths automatically.
 - [ ] Target final artifacts by November 19 noon. Ryo uploads CSV and matching ZIP manually, waits for completed scoring, and records score/hash/time.
 - [ ] Verify the intended candidate is the last upload before 8 p.m. Toronto time. No public/local result guarantees the final top-10% placement.
 
@@ -104,4 +104,4 @@ Astra is the user-selected coding executor. Start with Tasks 1–2, then afforda
 
 Ryo requested deeper features and model diversity while searches were running. Added individually tested category combinations, enquiry-window comparisons and explicit pricing hypotheses, plus XGBoost. Pricing hypotheses improved the LightGBM profile candidate; category/enquiry groups did not. Model-specific feature and training options preserve the exact validated component settings in a final ensemble while keeping folds and audit seeds shared. A separate frozen-model audit comparison evaluates saved snapshots without refitting or tuning on the audit.
 
-A first interim CSV and matching ZIP were delivered and read back from Drive while the stronger comparisons continue. Full-data refit and final artifact delivery remain pending.
+A first interim CSV and matching ZIP were delivered and read back from Drive while the stronger comparisons continue. Full-data refit and final artifact delivery are complete. The manual competition upload, returned public score and deadline last-file check remain Ryo's actions.

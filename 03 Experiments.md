@@ -8,7 +8,7 @@ tags: [gci, experiments]
 
 ## Current stage
 
-The bounded model and feature comparisons are complete. Three designs were frozen before one comparison on the 34,241 reserved audit rows. That check selected **50% shallow CPU CatBoost + 50% tuned pricing XGBoost**. The final five-fold run now uses all 171,202 labelled rows as its training population. Audit feedback will not be used for additional tuning.
+The bounded model and feature comparisons are complete. Three designs were frozen before one comparison on the 34,241 reserved audit rows. That check selected **50% shallow CPU CatBoost + 50% tuned pricing XGBoost**. The completed final five-fold run used all 171,202 labelled rows as its training population, with final-training OOF AUC 0.764534. Its CSV and matching ZIP passed saved-model and Drive readback checks. Audit feedback will not be used for additional tuning.
 
 ## Development evidence
 
