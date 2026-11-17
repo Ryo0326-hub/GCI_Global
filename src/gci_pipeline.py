@@ -6,7 +6,7 @@ reserved until evaluate_audit is explicitly enabled. No competition upload occur
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 import hashlib
 from importlib.metadata import version
@@ -65,6 +65,7 @@ class Config:
     verify_input_hashes: bool = True
     frozen_choices: bool = False
     model_params: dict = field(default_factory=dict)
+    model_options: dict = field(default_factory=dict)
     blend_weights: dict | None = None
 
     def __post_init__(self):
@@ -80,6 +81,13 @@ class Config:
             raise ValueError("Supported models: LightGBM, CatBoost and XGBoost")
         if set(self.feature_groups) - GROUPS:
             raise ValueError("Unknown feature group")
+        for name, options in self.model_options.items():
+            if name not in self.models or set(options) - {"feature_groups", "max_iterations", "early_stopping", "threads"}:
+                raise ValueError("model_options may override only features and training limits for selected models")
+            if set(options.get("feature_groups", ())) - GROUPS:
+                raise ValueError("Unknown per-model feature group")
+            if any(not isinstance(v, int) or v < 1 for k, v in options.items() if k != "feature_groups"):
+                raise ValueError("Per-model training limits must be positive integers")
         if not 0 < self.audit_fraction < 0.5 or self.n_splits < 2:
             raise ValueError("Invalid validation split")
         if self.mode == "final" and not self.frozen_choices:
@@ -342,23 +350,29 @@ def fit_cv(x, y, test_x, ids, cfg, output_dir=None, audit_x=None, trial=None):
         fold_ids[va] = fold
     result["fold_ids"] = fold_ids
     for name in cfg.models:
+        model_cfg = replace(cfg, **cfg.model_options.get(name, {}), model_options={})
+        # With per-model options, callers pass raw predictors; each member derives only its selected features.
+        model_x = make_features(x, model_cfg.feature_groups) if cfg.model_options else x
+        model_test = make_features(test_x, model_cfg.feature_groups) if cfg.model_options and test_x is not None else test_x
+        model_audit = make_features(audit_x, model_cfg.feature_groups) if cfg.model_options and audit_x is not None else audit_x
         oof = np.full(len(x), np.nan)
         test_pred = np.zeros(len(test_x)) if test_x is not None else None
         audit_pred = np.zeros(len(audit_x)) if audit_x is not None else None
         fold_metrics = []
         for fold, (tr, va) in enumerate(folds):
             started = time.monotonic()
-            processor = FeatureProcessor(cfg.feature_groups, name).fit(x.iloc[tr])
-            train_x, valid_x = processor.transform(x.iloc[tr]), processor.transform(x.iloc[va])
-            params = {**model_defaults(name, cfg), **cfg.model_params.get(name, {})}
+            processor = FeatureProcessor(model_cfg.feature_groups, name).fit(model_x.iloc[tr])
+            train_x, valid_x = processor.transform(model_x.iloc[tr]), processor.transform(model_x.iloc[va])
+            feature_count = train_x.shape[1]
+            params = {**model_defaults(name, model_cfg), **cfg.model_params.get(name, {})}
             requested_backend = params.get("task_type", params.get("device_type", params.get("device", "CPU")))
             print(f"{name} fold {fold + 1}/{cfg.n_splits}: starting on {requested_backend}", flush=True)
             if name == "lightgbm":
                 import lightgbm as lgb
                 model = lgb.LGBMClassifier(**params)
                 model.fit(train_x, y.iloc[tr], eval_set=[(valid_x, y.iloc[va])],
-                          callbacks=[lgb.early_stopping(cfg.early_stopping, first_metric_only=True, verbose=False)])
-                best_iteration = int(model.best_iteration_ or cfg.max_iterations)
+                          callbacks=[lgb.early_stopping(model_cfg.early_stopping, first_metric_only=True, verbose=False)])
+                best_iteration = int(model.best_iteration_ or model_cfg.max_iterations)
                 backend = str(model.booster_.params.get("device_type", "CPU")).upper()
             elif name == "xgboost":
                 from xgboost import XGBClassifier
@@ -373,16 +387,16 @@ def fit_cv(x, y, test_x, ids, cfg, output_dir=None, audit_x=None, trial=None):
                 from catboost import CatBoostClassifier
                 model = CatBoostClassifier(**params)
                 model.fit(train_x, y.iloc[tr], cat_features=processor.categorical,
-                          eval_set=(valid_x, y.iloc[va]), early_stopping_rounds=cfg.early_stopping, use_best_model=True)
+                          eval_set=(valid_x, y.iloc[va]), early_stopping_rounds=model_cfg.early_stopping, use_best_model=True)
                 best_iteration = int(model.tree_count_)
                 backend = model.get_all_params()["task_type"]
                 if str(requested_backend).upper() != backend:
                     raise RuntimeError(f"Requested {requested_backend}, fitted {backend}")
             oof[va] = model.predict_proba(valid_x)[:, 1]
             if test_pred is not None:
-                test_pred += model.predict_proba(processor.transform(test_x))[:, 1] / cfg.n_splits
+                test_pred += model.predict_proba(processor.transform(model_test))[:, 1] / cfg.n_splits
             if audit_pred is not None:
-                audit_pred += model.predict_proba(processor.transform(audit_x))[:, 1] / cfg.n_splits
+                audit_pred += model.predict_proba(processor.transform(model_audit))[:, 1] / cfg.n_splits
             metric = {"fold": fold, "auc": float(roc_auc_score(y.iloc[va], oof[va])),
                       "best_iteration": best_iteration, "seconds": round(time.monotonic() - started, 2),
                       "backend": backend}
@@ -404,7 +418,8 @@ def fit_cv(x, y, test_x, ids, cfg, output_dir=None, audit_x=None, trial=None):
         if not np.isfinite(oof).all():
             raise ValueError("Incomplete OOF predictions")
         result["oof"][name], result["test"][name], result["audit"][name] = oof, test_pred, audit_pred
-        result["metrics"][name] = {"oof_auc": float(roc_auc_score(y, oof)), "folds": fold_metrics}
+        result["metrics"][name] = {"oof_auc": float(roc_auc_score(y, oof)), "folds": fold_metrics,
+                                   "feature_count": feature_count}
     return result
 
 
@@ -468,6 +483,7 @@ tags: [gci, experiment, generated]
 Selected OOF AUC: **{manifest['selected_oof_auc']:.6f}**. This is a local model-selection result, not a leaderboard score. {audit_text}
 
 - Feature groups: {', '.join(cfg['feature_groups']) or 'raw predictors + employment placeholder flag'}
+- Per-model feature/training overrides: `{json.dumps(cfg.get('model_options', {}), sort_keys=True)}`
 - Folds / seed: {cfg['n_splits']} / {cfg['seed']}
 - Weights: `{json.dumps(manifest['selected_weights'], sort_keys=True)}`
 - Runtime: {manifest['seconds']:.1f} seconds
@@ -495,11 +511,13 @@ def run_experiment(input_dir, output_dir, cfg=None, notes_dir=None):
     train, test, sample, hashes = load_inputs(input_dir, cfg.verify_input_hashes)
     development, audit = development_split(train, cfg)
     selected_rows = development if cfg.mode == "development" else np.arange(len(train))
-    x = make_features(train.iloc[selected_rows].reset_index(drop=True), cfg.feature_groups)
+    def features(frame):
+        return frame.drop(columns=["SK_ID_CURR", "TARGET"], errors="ignore").copy() if cfg.model_options else make_features(frame, cfg.feature_groups)
+    x = features(train.iloc[selected_rows].reset_index(drop=True))
     y = train.TARGET.iloc[selected_rows].reset_index(drop=True)
     ids = train.SK_ID_CURR.iloc[selected_rows].reset_index(drop=True)
-    test_x = make_features(test, cfg.feature_groups)
-    audit_x = make_features(train.iloc[audit].reset_index(drop=True), cfg.feature_groups) if cfg.evaluate_audit else None
+    test_x = features(test)
+    audit_x = features(train.iloc[audit].reset_index(drop=True)) if cfg.evaluate_audit else None
     created = datetime.now(timezone.utc)
     run_id = created.strftime("%Y%m%dT%H%M%S%fZ") + "_" + cfg.label
     output_dir = Path(output_dir)
@@ -545,7 +563,8 @@ def run_experiment(input_dir, output_dir, cfg=None, notes_dir=None):
                 "run_id": run_id, "created_utc": created.isoformat(), "config": asdict(cfg),
                 "input_hashes": hashes, "package_versions": package_versions,
                 "training_rows": len(train), "development_rows": len(development), "audit_rows": len(audit),
-                "fitted_population_rows": len(selected_rows), "test_rows": len(test), "feature_count": x.shape[1],
+                "fitted_population_rows": len(selected_rows), "test_rows": len(test),
+                "feature_count": max(v.get("feature_count", x.shape[1]) for v in results["metrics"].values()),
                 "model_metrics": results["metrics"], "selected_weights": weights, "selected_name": selected_name,
                 "selected_oof_auc": float(roc_auc_score(y, selected_oof)), "audit_auc": audit_auc,
                 "submission_sha256": sha256(run_dir / "submission.csv"), "competition_upload": False,
@@ -583,9 +602,10 @@ def verify_saved_predictions(input_dir, run_dir):
     _, test, sample, hashes = load_inputs(input_dir, cfg.verify_input_hashes)
     if hashes != manifest["input_hashes"]:
         raise ValueError("Run input bytes changed")
-    x = make_features(test, cfg.feature_groups)
     prediction = np.zeros(len(test))
     for name in cfg.models:
+        groups = cfg.model_options.get(name, {}).get("feature_groups", cfg.feature_groups)
+        x = make_features(test, groups)
         model_prediction = np.zeros(len(test))
         for fold in range(cfg.n_splits):
             saved = joblib.load(run_dir / f"{name}_fold_{fold}.joblib")
@@ -613,7 +633,8 @@ def tune_model(input_dir, study_dir, cfg, model_name="lightgbm", n_trials=20, ti
         raise ValueError("Tuning is restricted to development data; disable audit evaluation")
     train, _, _, hashes = load_inputs(input_dir, cfg.verify_input_hashes)
     dev, _ = development_split(train, cfg)
-    x = make_features(train.iloc[dev].reset_index(drop=True), cfg.feature_groups)
+    raw = train.iloc[dev].reset_index(drop=True)
+    x = raw.drop(columns=["SK_ID_CURR", "TARGET"]) if cfg.model_options else make_features(raw, cfg.feature_groups)
     y = train.TARGET.iloc[dev].reset_index(drop=True)
     study_dir = Path(study_dir)
     study_dir.mkdir(parents=True, exist_ok=True)
@@ -621,7 +642,8 @@ def tune_model(input_dir, study_dir, cfg, model_name="lightgbm", n_trials=20, ti
                 "groups": cfg.feature_groups, "model": model_name, "n_splits": 3, "threads": cfg.threads,
                 "seed": cfg.seed, "audit_seed": cfg.audit_seed, "audit_fraction": cfg.audit_fraction,
                 "max_iterations": cfg.max_iterations, "early_stopping": cfg.early_stopping,
-                "model_params": cfg.model_params, "versions": {p: version(p) for p in PACKAGES}}
+                "model_params": cfg.model_params, "model_options": cfg.model_options,
+                "versions": {p: version(p) for p in PACKAGES}}
     identity_hash = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:16]
     study_name = f"{model_name}_{identity_hash}"
     study = optuna.create_study(study_name=study_name, storage=f"sqlite:///{(study_dir / 'studies.db').resolve()}",
@@ -656,7 +678,8 @@ def tune_model(input_dir, study_dir, cfg, model_name="lightgbm", n_trials=20, ti
             raise ValueError("Unsupported tuning model")
         trial_params = {**cfg.model_params.get(model_name, {}), **params}
         trial_cfg = Config(**{**asdict(cfg), "models": (model_name,), "n_splits": 3,
-                              "model_params": {model_name: trial_params}, "blend_weights": None})
+                              "model_params": {model_name: trial_params}, "blend_weights": None,
+                              "model_options": ({model_name: cfg.model_options.get(model_name, {})} if cfg.model_options else {})})
         fitted = fit_cv(x, y, None, train.SK_ID_CURR.iloc[dev], trial_cfg, trial=trial)
         return fitted["metrics"][model_name]["oof_auc"]
 

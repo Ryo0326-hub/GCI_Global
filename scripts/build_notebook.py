@@ -30,7 +30,7 @@ cell("markdown", """# GCI World: Home Credit submission workflow
 
 This is the new competition notebook. The original tutorial is unchanged.
 
-**Run:** choose a T4 GPU in Runtime → Change runtime type, then Run all and authorize your own Drive mount. Setup verifies the packages, then model steps run in fresh Python processes. The notebook session continues without a forced restart. The configuration below contains the current sprint candidate. Development runs reserve an audit set; a frozen final run uses all labelled rows.
+**Run:** use Run all and authorize your own Drive mount. The frozen CPU ensemble works without a GPU. If you deliberately configure a GPU experiment, choose a T4 in Runtime → Change runtime type first. Setup verifies the packages, then model steps run in fresh Python processes. The notebook session continues without a forced restart. The configuration below contains the current sprint candidate. Development runs reserve an audit set; a frozen final run uses all labelled rows.
 
 Outputs in `MyDrive/GCI_Global/Competition`:
 - `output/submission.csv`: the current format-checked candidate.
@@ -103,7 +103,7 @@ cell("markdown", """## 4. Configure one experiment
 
 The default is the saved sprint candidate. For a controlled feature experiment, use a new `label` and `mode='development'`. Available groups: `scores`, `affordability`, `tenure`, `missingness`, `peer`, `categories`, `logs`, `loan_terms`, `peer_profile`, `category_crosses`, `inquiry_patterns`, or `pricing_proxies`. GPU failures stop clearly. To choose CPU deliberately, set CatBoost `task_type='CPU'` and remove `devices`; use at most ten CPU tuning trials.
 
-Keep `evaluate_audit=False` while experimenting. Use a second `seed` when confirming a candidate. Later, after freezing choices, switch to `mode='final'`, `frozen_choices=True`, and supply the selected `blend_weights`. Final mode includes all labeled rows and has no independent audit score.
+For an ensemble, `model_options` preserves each member's validated feature groups, iteration limits, early stopping and thread count. Fold and audit seeds stay shared. Keep `evaluate_audit=False` while experimenting. Use a second `seed` when confirming a candidate. Later, after freezing choices, switch to `mode='final'`, `frozen_choices=True`, and supply the selected `blend_weights`. Final mode includes all labeled rows and has no independent audit score.
 """)
 cell("code", "config = " + repr(default_config) + "\n\n" + """
 RUN_OPTUNA = False
@@ -187,7 +187,7 @@ print('Local OOF AUC:', manifest['selected_oof_auc'])
 print('Submission rows:', manifest['test_rows'])
 print('SHA-256:', manifest['submission_sha256'])
 """)
-cell("markdown", "## 7. Optional blend diagnostic\n\nThe run initially selects a standalone model. This cell proposes coarse blend weights without changing its submission. Review the meta-validation results and confirm any blend on a frozen audit run.\n")
+cell("markdown", "## 7. Optional blend diagnostic\n\nA run uses explicit frozen blend weights when supplied; otherwise it selects a standalone model. This optional development-only cell proposes coarse blend weights without changing the submission. Review the meta-validation results and confirm any blend on a frozen audit run.\n")
 cell("code", """CHECK_BLEND = False
 if CHECK_BLEND:
     blend_result = pipeline_step('''
@@ -244,7 +244,8 @@ notebook = {"nbformat": 4, "nbformat_minor": 5,
                          "gci": {"pipeline_version": "gci-setup-v1", "pipeline_sha256": hashlib.sha256(pipeline.encode()).hexdigest(),
                                  "environment_sha256": hashlib.sha256(environment.encode()).hexdigest()}},
             "cells": cells}
-if default_config.get('model_params', {}).get('catboost', {}).get('task_type') == 'GPU':
+if (default_config.get('model_params', {}).get('catboost', {}).get('task_type') == 'GPU'
+        or default_config.get('model_params', {}).get('xgboost', {}).get('device', 'cpu').startswith('cuda')):
     notebook['metadata']['accelerator'] = 'GPU'
     notebook['metadata']['colab']['gpuType'] = 'T4'
 backup = ROOT / "research/comp_original.ipynb"

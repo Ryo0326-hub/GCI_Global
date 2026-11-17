@@ -13,7 +13,7 @@ def main():
     parser.add_argument("--input", required=True)
     parser.add_argument("--config", required=True)
     parser.add_argument("--study-dir", required=True)
-    parser.add_argument("--model", choices=("lightgbm", "catboost"), required=True)
+    parser.add_argument("--model", choices=("lightgbm", "catboost", "xgboost"), required=True)
     parser.add_argument("--trials", type=int, default=20, help="Additional trials; run one writer per study")
     parser.add_argument("--timeout", type=int, default=7200)
     parser.add_argument("--best-config", required=True)
@@ -23,6 +23,9 @@ def main():
     selected = asdict(cfg)
     selected.update(label=cfg.label + "_tuned", n_splits=5, models=[args.model])
     selected["model_params"][args.model] = best
+    options = getattr(cfg, "model_options", {})
+    if options:
+        selected["model_options"] = {args.model: options.get(args.model, {})}
     destination = Path(args.best_config)
     destination.parent.mkdir(parents=True, exist_ok=True)
     gci.save_json(destination, selected)
