@@ -1,0 +1,15 @@
+{
+  "frozen_sha256": "43225cb142851e17948426982cc6d953f6991bff1225d8e98c516c1555f57754",
+  "audit_rows": 34241,
+  "candidate_auc": {
+    "xgboost_only": 0.7628285960019414,
+    "catboost_xgboost": 0.76492344558476,
+    "three_model_blend": 0.764596868491992
+  },
+  "selected_candidate": "catboost_xgboost",
+  "selected_weights": {
+    "catboost": 0.5,
+    "xgboost": 0.5
+  },
+  "limitation": "One held-out comparison of preselected candidates; no performance guarantee on the competition test set."
+}
