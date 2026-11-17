@@ -101,7 +101,7 @@ print('Input bytes match the audited dataset.')
 """)
 cell("markdown", """## 4. Configure one experiment
 
-The default is the saved sprint candidate. For a controlled feature experiment, use a new `label` and `mode='development'`. Available groups: `scores`, `affordability`, `tenure`, `missingness`, `peer`, `categories`, `logs`, `loan_terms`, or `peer_profile`. GPU failures stop clearly. To choose CPU deliberately, set CatBoost `task_type='CPU'` and remove `devices`; use at most ten CPU tuning trials.
+The default is the saved sprint candidate. For a controlled feature experiment, use a new `label` and `mode='development'`. Available groups: `scores`, `affordability`, `tenure`, `missingness`, `peer`, `categories`, `logs`, `loan_terms`, `peer_profile`, `category_crosses`, `inquiry_patterns`, or `pricing_proxies`. GPU failures stop clearly. To choose CPU deliberately, set CatBoost `task_type='CPU'` and remove `devices`; use at most ten CPU tuning trials.
 
 Keep `evaluate_audit=False` while experimenting. Use a second `seed` when confirming a candidate. Later, after freezing choices, switch to `mode='final'`, `frozen_choices=True`, and supply the selected `blend_weights`. Final mode includes all labeled rows and has no independent audit score.
 """)
@@ -119,6 +119,7 @@ if 'catboost' in cfg.models:
     from catboost import CatBoostClassifier
     params = {**gci.model_defaults('catboost', cfg), **cfg.model_params.get('catboost', {})}
     params.update(iterations=5, depth=2)
+    params.pop('ignored_features', None)  # The tiny backend probe has two synthetic columns.
     model = CatBoostClassifier(**params)
     model.fit([[float(i), float(i % 3)] for i in range(256)], [i % 2 for i in range(256)])
     backend = model.get_all_params()['task_type']
@@ -130,6 +131,18 @@ if 'catboost' in cfg.models:
                                         '--format=csv'], capture_output=True, text=True, check=True).stdout.strip()
 if 'lightgbm' in cfg.models:
     result['models']['lightgbm'] = cfg.model_params.get('lightgbm', {}).get('device_type', 'cpu')
+if 'xgboost' in cfg.models:
+    import json
+    from xgboost import XGBClassifier
+    params = {**gci.model_defaults('xgboost', cfg), **cfg.model_params.get('xgboost', {})}
+    params.update(n_estimators=5, max_depth=2)
+    params.pop('early_stopping_rounds', None)
+    model = XGBClassifier(**params)
+    model.fit([[float(i), float(i % 3)] for i in range(256)], [i % 2 for i in range(256)])
+    device = json.loads(model.get_booster().save_config())['learner']['generic_param']['device']
+    if params.get('device', 'cpu').startswith('cuda') and not device.startswith('cuda'):
+        raise RuntimeError('Requested XGBoost CUDA backend was not used; no automatic CPU fallback')
+    result['models']['xgboost'] = device
 gci.save_json(Path(payload['output_dir']) / 'backend_preflight.json', result)
 ''', config=config, output_dir=str(output_dir))
 print('Backend check passed:', backend_info)

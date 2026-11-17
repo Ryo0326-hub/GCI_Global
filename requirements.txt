@@ -4,5 +4,6 @@ scipy==1.15.3
 scikit-learn==1.6.1
 lightgbm==4.6.0
 catboost==1.2.8
+xgboost==3.0.5
 optuna==4.4.0
 joblib==1.5.1

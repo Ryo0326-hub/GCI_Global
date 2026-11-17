@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import gci_pipeline as gci
 
 
-def test_saved_models_reproduce_and_tampering_is_rejected(tmp_path):
+def test_saved_models_reproduce_and_tampering_is_rejected(tmp_path, monkeypatch):
     inputs = tmp_path / "input"
     inputs.mkdir()
     train = pd.DataFrame({"SK_ID_CURR": range(120), "TARGET": [0, 0, 0, 1] * 30,
@@ -40,6 +40,24 @@ def test_saved_models_reproduce_and_tampering_is_rejected(tmp_path):
     with zipfile.ZipFile(bundle) as archive:
         assert archive.testzip() is None
         assert archive.read("submission.csv") == (run_dir / "submission.csv").read_bytes()
+    previous_bundle = bundle.read_bytes()
+    citations = tmp_path / "CITATIONS.md"
+    citations.unlink()
+    with pytest.raises(FileNotFoundError, match="CITATIONS"):
+        gci.build_bundle(tmp_path, manifest, notebook)
+    assert bundle.read_bytes() == previous_bundle
+    citations.write_text("Test fixture; no competition result.\n")
+    original_write = zipfile.ZipFile.write
+    def disk_failure(archive, filename, arcname=None, **kwargs):
+        if arcname == "gci_pipeline.py":
+            raise OSError("simulated full disk")
+        return original_write(archive, filename, arcname=arcname, **kwargs)
+    with monkeypatch.context() as patch:
+        patch.setattr(zipfile.ZipFile, "write", disk_failure)
+        with pytest.raises(OSError, match="full disk"):
+            gci.build_bundle(tmp_path, manifest, notebook)
+    assert bundle.read_bytes() == previous_bundle
+    assert not list(tmp_path.glob(".comp-*.zip"))
     frozen_config = run_dir / "reproduce_config.json"
     original_config = frozen_config.read_bytes()
     changed_config = json.loads(original_config)

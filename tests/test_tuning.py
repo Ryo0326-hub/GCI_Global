@@ -24,6 +24,7 @@ def tuning_data(monkeypatch):
     ("catboost", {"task_type": "GPU", "devices": "0", "depth": 2}),
     ("catboost", {"depth": 2}),
     ("lightgbm", {"device_type": "cpu", "max_bin": 127, "subsample_freq": 0}),
+    ("xgboost", {"device": "cuda:0", "tree_method": "hist", "max_depth": 1}),
 ])
 def test_tuning_preserves_fixed_backend_through_confirmation(tmp_path, monkeypatch, tuning_data, model, fixed):
     cfg = gci.Config(models=(model,), model_params={model: deepcopy(fixed)})
@@ -50,6 +51,9 @@ def test_tuning_preserves_fixed_backend_through_confirmation(tmp_path, monkeypat
             assert params.get("task_type") == fixed.get("task_type")
             assert params.get("devices") == fixed.get("devices")
             assert "learning_rate" in params and "l2_leaf_reg" in params
+        elif model == "xgboost":
+            assert params['device'] == 'cuda:0' and params['tree_method'] == 'hist'
+            assert 3 <= params['max_depth'] <= 6
         else:
             assert params["device_type"] == "cpu" and params["max_bin"] == 127
             assert params["subsample_freq"] == 1

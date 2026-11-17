@@ -16,6 +16,8 @@ import re
 import shutil
 import time
 import zipfile
+import tempfile
+from itertools import product
 
 import joblib
 import numpy as np
@@ -29,9 +31,9 @@ EXPECTED_HASHES = {
     "test.csv": "dfb7aeb96e5af3d8616acaaba6b23cec8680845cfd525f7c08de15c6d2d42c65",
     "sample_submission.csv": "6e5ad587b7c0b3d9fa39c90ce03e161ff5ef292193e117a6a02b11075dffe7db",
 }
-PACKAGES = ("numpy", "pandas", "scipy", "scikit-learn", "lightgbm", "catboost", "optuna", "joblib")
+PACKAGES = ("numpy", "pandas", "scipy", "scikit-learn", "lightgbm", "catboost", "xgboost", "optuna", "joblib")
 GROUPS = {"scores", "affordability", "tenure", "missingness", "peer", "categories", "logs",
-          "loan_terms", "peer_profile"}
+          "loan_terms", "peer_profile", "category_crosses", "inquiry_patterns", "pricing_proxies"}
 
 
 def sha256(path):
@@ -74,8 +76,8 @@ class Config:
             raise ValueError("mode must be development or final")
         if not self.models or len(set(self.models)) != len(self.models):
             raise ValueError("Select unique models")
-        if set(self.models) - {"lightgbm", "catboost"}:
-            raise ValueError("This first pipeline supports LightGBM and CatBoost")
+        if set(self.models) - {"lightgbm", "catboost", "xgboost"}:
+            raise ValueError("Supported models: LightGBM, CatBoost and XGBoost")
         if set(self.feature_groups) - GROUPS:
             raise ValueError("Unknown feature group")
         if not 0 < self.audit_fraction < 0.5 or self.n_splits < 2:
@@ -194,6 +196,54 @@ def make_features(frame, groups=()):
     if "peer_profile" in groups:
         x["CREDIT_ANNUITY"] = safe_ratio(x.AMT_CREDIT, x.AMT_ANNUITY)
         x["EXT_PROFILE_MEAN"] = x[["EXT_SOURCE_1", "EXT_SOURCE_2", "EXT_SOURCE_3"]].mean(axis=1)
+    if "category_crosses" in groups:
+        age = pd.cut(-x.DAYS_BIRTH / 365.25, [0, 25, 35, 45, 55, 65, np.inf], include_lowest=True).astype(str)
+        term = pd.cut(safe_ratio(x.AMT_CREDIT, x.AMT_ANNUITY),
+                      [-np.inf, 6, 12, 18, 24, 36, 60, np.inf]).astype(str)
+        for label, columns in (
+            ("HOUSING_FAMILY", [x.NAME_HOUSING_TYPE, x.NAME_FAMILY_STATUS]),
+            ("EDUCATION_OCCUPATION", [x.NAME_EDUCATION_TYPE, x.OCCUPATION_TYPE]),
+            ("OCCUPATION_ORGANIZATION", [x.OCCUPATION_TYPE, x.ORGANIZATION_TYPE]),
+            ("INCOME_EDUCATION", [x.NAME_INCOME_TYPE, x.NAME_EDUCATION_TYPE]),
+            ("INCOME_CONTRACT", [x.NAME_INCOME_TYPE, x.NAME_CONTRACT_TYPE]),
+            ("AGE_FAMILY", [age, x.NAME_FAMILY_STATUS]),
+            ("TERM_CONTRACT", [term, x.NAME_CONTRACT_TYPE]),
+            ("REGION_HOUSING", [x.REGION_RATING_CLIENT, x.NAME_HOUSING_TYPE]),
+        ):
+            # JSON tuples avoid collisions between category strings containing separators.
+            parts = [s.astype("string").fillna("__MISSING__") for s in columns]
+            x[f"CROSS_{label}"] = [json.dumps(v, ensure_ascii=True) for v in zip(*parts)]
+    if "inquiry_patterns" in groups:
+        hour, month, quarter, year = [x[f"AMT_REQ_CREDIT_BUREAU_{s}"].where(
+            x[f"AMT_REQ_CREDIT_BUREAU_{s}"].ge(0)) for s in ("HOUR", "MON", "QRT", "YEAR")]
+        # Comparisons of reported windows, not reconstructed monthly observations.
+        x["ENQUIRY_MONTH_TO_ANNUAL_RATE"] = safe_ratio(month, year / 12 + 1)
+        x["ENQUIRY_QUARTER_TO_ANNUAL_RATE"] = safe_ratio(quarter, year / 4 + 1)
+        x["ENQUIRY_MONTH_TO_QUARTER_RATE"] = safe_ratio(month, quarter / 3 + 1)
+        x["ENQUIRY_HOUR_TO_MONTH"] = safe_ratio(hour, month + 1)
+        x["ENQUIRY_RECENT_ACTIVITY"] = month.gt(0).astype(float).where(month.notna())
+        x["ENQUIRY_MISSING_PATTERN"] = ["".join(v) for v in zip(
+            *[s.isna().astype(int).astype(str) for s in (hour, month, quarter, year)])]
+    if "pricing_proxies" in groups:
+        # Godula-inspired scenarios; rate/term are unknown, never asserted as observed.
+        payment_ratio = safe_ratio(x.AMT_ANNUITY.where(x.AMT_ANNUITY.gt(0)),
+                                   x.AMT_CREDIT.where(x.AMT_CREDIT.gt(0)))
+        x["ZERO_RATE_TERM_PROXY"] = safe_ratio(pd.Series(1., index=x.index), payment_ratio)
+        scenario_columns = []
+        for months in (12, 24, 36, 60):
+            low, high = np.zeros(len(x)), np.full(len(x), .06)
+            q = payment_ratio.to_numpy()
+            maximum_payment = .06 / (1 - 1.06 ** -months)
+            valid = np.isfinite(q) & (q >= 1 / months) & (q <= maximum_payment)
+            for _ in range(32):
+                rate = (low + high) / 2
+                implied_payment = rate / (-np.expm1(-months * np.log1p(rate)))
+                low = np.where(implied_payment < q, rate, low)
+                high = np.where(implied_payment >= q, rate, high)
+            name = f"RATE_HYPOTHESIS_{months}M"
+            x[name] = np.where(valid, 12 * (low + high) / 2, np.nan)
+            scenario_columns.append(name)
+        x["FEASIBLE_TERM_SCENARIOS"] = x[scenario_columns].notna().sum(axis=1).astype(float).where(payment_ratio.notna())
     return x.replace([np.inf, -np.inf], np.nan)
 
 
@@ -215,6 +265,9 @@ class FeatureProcessor:
             self.income_median = float(x.AMT_INCOME_TOTAL.median())
         if "categories" in self.groups:
             self.frequencies = {c: x[c].fillna("__MISSING__").value_counts().div(len(x)).to_dict() for c in self.categorical}
+        if "category_crosses" in self.groups:
+            self.frequencies.update({c: x[c].fillna("__MISSING__").value_counts().div(len(x)).to_dict()
+                                     for c in self.categorical if c.startswith("CROSS_")})
         self.profiles = []
         if "peer_profile" in self.groups:
             values = ["AMT_INCOME_TOTAL", "AMT_CREDIT", "AMT_ANNUITY", "CREDIT_ANNUITY", "EXT_PROFILE_MEAN"]
@@ -256,7 +309,7 @@ class FeatureProcessor:
                     if stat == "median":
                         z[f"PROFILE_{number}_{value}_RELATIVE"] = safe_ratio(z[value], z[feature])
         for c in self.categorical:
-            if self.model_name == "lightgbm":
+            if self.model_name in {"lightgbm", "xgboost"}:
                 z[c] = pd.Categorical(z[c], categories=self.categories[c])
             else:
                 z[c] = z[c].fillna("__MISSING__").astype(str)
@@ -270,6 +323,12 @@ def model_defaults(model_name, cfg):
                     colsample_bytree=0.85, subsample=0.85, subsample_freq=1,
                     reg_alpha=0.05, reg_lambda=5.0, random_state=cfg.seed,
                     deterministic=True, force_col_wise=True, n_jobs=cfg.threads, verbosity=-1)
+    if model_name == "xgboost":
+        return dict(objective="binary:logistic", eval_metric="auc", tree_method="hist", device="cpu",
+                    enable_categorical=True, n_estimators=cfg.max_iterations, learning_rate=.035,
+                    max_depth=4, min_child_weight=20, subsample=.85, colsample_bytree=.8,
+                    reg_lambda=10., reg_alpha=.1, max_bin=256, n_jobs=cfg.threads,
+                    random_state=cfg.seed, early_stopping_rounds=cfg.early_stopping, verbosity=0)
     return dict(loss_function="Logloss", eval_metric="AUC", iterations=cfg.max_iterations,
                 learning_rate=0.04, depth=6, l2_leaf_reg=6, random_seed=cfg.seed,
                 thread_count=cfg.threads, allow_writing_files=False, verbose=False)
@@ -292,7 +351,7 @@ def fit_cv(x, y, test_x, ids, cfg, output_dir=None, audit_x=None, trial=None):
             processor = FeatureProcessor(cfg.feature_groups, name).fit(x.iloc[tr])
             train_x, valid_x = processor.transform(x.iloc[tr]), processor.transform(x.iloc[va])
             params = {**model_defaults(name, cfg), **cfg.model_params.get(name, {})}
-            requested_backend = params.get("task_type", params.get("device_type", "CPU"))
+            requested_backend = params.get("task_type", params.get("device_type", params.get("device", "CPU")))
             print(f"{name} fold {fold + 1}/{cfg.n_splits}: starting on {requested_backend}", flush=True)
             if name == "lightgbm":
                 import lightgbm as lgb
@@ -301,6 +360,15 @@ def fit_cv(x, y, test_x, ids, cfg, output_dir=None, audit_x=None, trial=None):
                           callbacks=[lgb.early_stopping(cfg.early_stopping, first_metric_only=True, verbose=False)])
                 best_iteration = int(model.best_iteration_ or cfg.max_iterations)
                 backend = str(model.booster_.params.get("device_type", "CPU")).upper()
+            elif name == "xgboost":
+                from xgboost import XGBClassifier
+                model = XGBClassifier(**params)
+                model.fit(train_x, y.iloc[tr], eval_set=[(valid_x, y.iloc[va])], verbose=False)
+                device = json.loads(model.get_booster().save_config())["learner"]["generic_param"]["device"]
+                if str(requested_backend).startswith("cuda") and not device.startswith("cuda"):
+                    raise RuntimeError(f"Requested {requested_backend}, fitted {device}; no automatic CPU fallback")
+                backend = "GPU" if device.startswith("cuda") else "CPU"
+                best_iteration = int(model.best_iteration + 1)
             else:
                 from catboost import CatBoostClassifier
                 model = CatBoostClassifier(**params)
@@ -323,6 +391,8 @@ def fit_cv(x, y, test_x, ids, cfg, output_dir=None, audit_x=None, trial=None):
                   f"backend={backend}, seconds={metric['seconds']}", flush=True)
             if output_dir is not None:
                 joblib.dump({"processor": processor, "model": model}, Path(output_dir) / f"{name}_fold_{fold}.joblib")
+                if name == "xgboost":
+                    model.save_model(Path(output_dir) / f"{name}_fold_{fold}.ubj")
                 if hasattr(model, "feature_importances_"):
                     pd.DataFrame({"feature": train_x.columns, "importance": model.feature_importances_}).to_csv(Path(output_dir) / f"{name}_importance_{fold}.csv", index=False)
             if trial is not None:
@@ -574,6 +644,14 @@ def tune_model(input_dir, study_dir, cfg, model_name="lightgbm", n_trials=20, ti
             params = dict(depth=trial.suggest_int("depth", 4, 8),
                           learning_rate=trial.suggest_float("learning_rate", 0.01, 0.08, log=True),
                           l2_leaf_reg=trial.suggest_float("l2_leaf_reg", 1, 30, log=True))
+        elif model_name == "xgboost":
+            params = dict(max_depth=trial.suggest_int("max_depth", 3, 6),
+                          min_child_weight=trial.suggest_float("min_child_weight", 5, 60, log=True),
+                          learning_rate=trial.suggest_float("learning_rate", .02, .07, log=True),
+                          subsample=trial.suggest_float("subsample", .7, 1.),
+                          colsample_bytree=trial.suggest_float("colsample_bytree", .65, 1.),
+                          reg_lambda=trial.suggest_float("reg_lambda", 1, 40, log=True),
+                          reg_alpha=trial.suggest_float("reg_alpha", 1e-4, 5, log=True))
         else:
             raise ValueError("Unsupported tuning model")
         trial_params = {**cfg.model_params.get(model_name, {}), **params}
@@ -595,18 +673,24 @@ def select_blend(run_dir, seed=42):
     """OOF meta-holdout diagnostic. Independent audit confirmation still needed."""
     run_dir = Path(run_dir)
     oof = pd.read_csv(run_dir / "oof.csv")
-    if not {"lightgbm", "catboost"}.issubset(oof.columns):
-        raise ValueError("Both model OOF columns are required")
+    models = [name for name in ("lightgbm", "catboost", "xgboost") if name in oof]
+    if len(models) < 2:
+        raise ValueError("At least two model OOF columns are required")
     fit, validation = train_test_split(np.arange(len(oof)), stratify=oof.TARGET, test_size=0.30, random_state=seed + 17)
     rows = []
-    for weight in np.linspace(0, 1, 11):
-        p = weight * oof.lightgbm + (1 - weight) * oof.catboost
-        rows.append({"lightgbm_weight": float(weight), "selection_auc": float(roc_auc_score(oof.TARGET.iloc[fit], p.iloc[fit])),
+    units = 10 if len(models) == 2 else 4
+    for integers in product(range(units + 1), repeat=len(models)):
+        if sum(integers) != units:
+            continue
+        candidate = dict(zip(models, (value / units for value in integers)))
+        p = sum(candidate[name] * oof[name] for name in models)
+        rows.append({**{name + "_weight": float(value) for name, value in candidate.items()},
+                     "selection_auc": float(roc_auc_score(oof.TARGET.iloc[fit], p.iloc[fit])),
                      "meta_validation_auc": float(roc_auc_score(oof.TARGET.iloc[validation], p.iloc[validation]))})
     table = pd.DataFrame(rows)
     best = table.sort_values("selection_auc", ascending=False).iloc[0]
     table.to_csv(run_dir / "blend_candidates.csv", index=False)
-    weights = {"lightgbm": float(best.lightgbm_weight), "catboost": float(1 - best.lightgbm_weight)}
+    weights = {name: float(best[name + "_weight"]) for name in models}
     save_json(run_dir / "blend_proposal.json", {"weights": weights, "selected_by": "selection_auc",
              "meta_validation_auc": float(best.meta_validation_auc),
              "limitation": "Base OOF models share training labels across meta partitions. Confirm on the reserved audit set."})
@@ -639,24 +723,29 @@ def build_bundle(project_dir, manifest, notebook_path=None):
     if len(embedded_sources) != 1 or hashlib.sha256(embedded_sources[0].encode()).hexdigest() != manifest["pipeline_sha256"]:
         raise ValueError("Saved notebook embeds a different pipeline. Save the current comp.ipynb before packaging.")
     bundle_path = project_dir / "comp.zip"
+    citations_path = project_dir / "CITATIONS.md"
+    if not citations_path.is_file():
+        raise FileNotFoundError("CITATIONS.md must accompany the code ZIP")
     items = {"comp.ipynb": notebook, "gci_pipeline.py": Path(__file__),
              "reproduce_config.json": run_dir / "reproduce_config.json", "manifest.json": run_dir / "manifest.json",
              "requirements.txt": run_dir / "requirements.lock.txt", "submission.csv": run_dir / "submission.csv"}
     readme = """# Reproduce this GCI submission\n\nPython 3.12 is recommended. Install requirements.txt.\nPut the three competition-provided CSVs in input/. Then run:\n\npython gci_pipeline.py --input input --output reproduced --config reproduce_config.json\n\nThis command uses the executed pipeline and frozen configuration. Compare reproduced/submission.csv with the bundled CSV. Byte identity can depend on platform/library versions. The manifest records the original hash. comp.ipynb offers the Colab interface. No external data or manual overrides are used. No Omnicampus upload is automated.\n"""
-    with zipfile.ZipFile(bundle_path, "w", zipfile.ZIP_DEFLATED) as archive:
-        for name, path in items.items():
-            archive.write(path, arcname=name)
-        archive.writestr("README.md", readme)
-        citations_path = project_dir / "CITATIONS.md"
-        if citations_path.exists():
+    with tempfile.NamedTemporaryFile(dir=project_dir, prefix=".comp-", suffix=".zip", delete=False) as handle:
+        temporary = Path(handle.name)
+    try:
+        with zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED) as archive:
+            for name, path in items.items():
+                archive.write(path, arcname=name)
+            archive.writestr("README.md", readme)
             archive.write(citations_path, "CITATIONS.md")
-        else:
-            raise FileNotFoundError("CITATIONS.md must accompany the code ZIP")
-        archive.writestr("bundle_hashes.json", json.dumps({name: sha256(path) for name, path in items.items()}, indent=2))
-    with zipfile.ZipFile(bundle_path) as archive:
-        if archive.testzip() is not None or hashlib.sha256(archive.read("submission.csv")).hexdigest() != manifest["submission_sha256"]:
-            raise ValueError("ZIP integrity check failed")
-    shutil.copy2(bundle_path, run_dir / "comp.zip")
+            archive.writestr("bundle_hashes.json", json.dumps({name: sha256(path) for name, path in items.items()}, indent=2))
+        with zipfile.ZipFile(temporary) as archive:
+            if archive.testzip() is not None or hashlib.sha256(archive.read("submission.csv")).hexdigest() != manifest["submission_sha256"]:
+                raise ValueError("ZIP integrity check failed")
+        shutil.copy2(temporary, run_dir / "comp.zip")
+        temporary.replace(bundle_path)
+    finally:
+        temporary.unlink(missing_ok=True)
     return bundle_path
 
 

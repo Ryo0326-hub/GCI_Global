@@ -29,7 +29,7 @@ for cell in notebook.cells:
     for node in ast.walk(tree):
         if not pipeline_cell and isinstance(node, (ast.Import, ast.ImportFrom)):
             modules = [node.module] if isinstance(node, ast.ImportFrom) else [alias.name for alias in node.names]
-            heavy = {"numpy", "pandas", "scipy", "sklearn", "lightgbm", "catboost", "gci_pipeline"}
+            heavy = {"numpy", "pandas", "scipy", "sklearn", "lightgbm", "catboost", "xgboost", "gci_pipeline"}
             if any(module and module.split('.')[0] in heavy for module in modules):
                 raise ValueError("Numerical packages must be imported in a fresh worker, not the notebook kernel.")
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "pipeline_step":

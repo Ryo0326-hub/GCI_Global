@@ -67,13 +67,16 @@ def check_stack(pins):
     models = [LGBMClassifier(n_estimators=3, num_leaves=3, min_child_samples=1, n_jobs=1, verbosity=-1),
               CatBoostClassifier(iterations=3, depth=2, thread_count=1, verbose=False,
                                  allow_writing_files=False, random_seed=42)]
+    if "xgboost" in pins:
+        from xgboost import XGBClassifier
+        models.append(XGBClassifier(n_estimators=3, max_depth=2, n_jobs=1, device="cpu"))
     for model in models:
         model.fit(x, y)
         prediction = model.predict_proba(x)[:, 1]
         assert np.isfinite(prediction).all()
         assert 0 <= roc_auc_score(y, prediction) <= 1
     return {"python": sys.version.split()[0], "packages": versions,
-            "checks": "NumPy strings, SciPy sparse, sklearn, LightGBM and CatBoost tiny fits passed"}
+            "checks": "NumPy strings, SciPy sparse, sklearn and all configured native model tiny fits passed"}
 
 
 def prepare_colab(pins):
