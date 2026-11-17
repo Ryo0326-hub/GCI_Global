@@ -101,7 +101,7 @@ print('Input bytes match the audited dataset.')
 """)
 cell("markdown", """## 4. Configure one experiment
 
-The default is the saved sprint candidate. For a controlled feature experiment, use a new `label` and `mode='development'`. Available groups: `scores`, `affordability`, `tenure`, `missingness`, `peer`, `categories`, or `logs`. GPU failures stop clearly. To choose CPU deliberately, set CatBoost `task_type='CPU'` and remove `devices`; use at most ten CPU tuning trials.
+The default is the saved sprint candidate. For a controlled feature experiment, use a new `label` and `mode='development'`. Available groups: `scores`, `affordability`, `tenure`, `missingness`, `peer`, `categories`, `logs`, `loan_terms`, or `peer_profile`. GPU failures stop clearly. To choose CPU deliberately, set CatBoost `task_type='CPU'` and remove `devices`; use at most ten CPU tuning trials.
 
 Keep `evaluate_audit=False` while experimenting. Use a second `seed` when confirming a candidate. Later, after freezing choices, switch to `mode='final'`, `frozen_choices=True`, and supply the selected `blend_weights`. Final mode includes all labeled rows and has no independent audit score.
 """)

@@ -30,7 +30,8 @@ EXPECTED_HASHES = {
     "sample_submission.csv": "6e5ad587b7c0b3d9fa39c90ce03e161ff5ef292193e117a6a02b11075dffe7db",
 }
 PACKAGES = ("numpy", "pandas", "scipy", "scikit-learn", "lightgbm", "catboost", "optuna", "joblib")
-GROUPS = {"scores", "affordability", "tenure", "missingness", "peer", "categories", "logs"}
+GROUPS = {"scores", "affordability", "tenure", "missingness", "peer", "categories", "logs",
+          "loan_terms", "peer_profile"}
 
 
 def sha256(path):
@@ -175,6 +176,24 @@ def make_features(frame, groups=()):
     if "logs" in groups:
         for c in ("AMT_INCOME_TOTAL", "AMT_CREDIT", "AMT_ANNUITY", "AMT_GOODS_PRICE"):
             x[f"LOG_{c}"] = np.log1p(x[c].where(x[c].ge(0)))
+    if "loan_terms" in groups:
+        # Current-application mathematical ideas: Onodera; see CITATIONS.md.
+        adults = (x.CNT_FAM_MEMBERS - x.CNT_CHILDREN).where(lambda s: s.gt(0))
+        family = x.CNT_FAM_MEMBERS.where(x.CNT_FAM_MEMBERS.gt(0))
+        x["ADULT_COUNT"] = adults
+        x["CHILD_SHARE"] = safe_ratio(x.CNT_CHILDREN, family)
+        for name, amount in (("INCOME", "AMT_INCOME_TOTAL"), ("CREDIT", "AMT_CREDIT"),
+                             ("ANNUITY", "AMT_ANNUITY"), ("GOODS", "AMT_GOODS_PRICE")):
+            x[f"{name}_PER_ADULT"] = safe_ratio(x[amount], adults)
+        x["GOODS_INCOME"] = safe_ratio(x.AMT_GOODS_PRICE, x.AMT_INCOME_TOTAL)
+        x["GOODS_ANNUITY"] = safe_ratio(x.AMT_GOODS_PRICE, x.AMT_ANNUITY)
+        x["FINANCING_INCOME"] = safe_ratio(x.AMT_CREDIT - x.AMT_GOODS_PRICE, x.AMT_INCOME_TOTAL)
+        x["GOODS_PER_FAMILY"] = safe_ratio(x.AMT_GOODS_PRICE, family)
+        x["PAYMENT_RATE"] = safe_ratio(x.AMT_ANNUITY, x.AMT_CREDIT)
+        x["AGE_AT_REPAYMENT_PROXY"] = (-x.DAYS_BIRTH + 30 * safe_ratio(x.AMT_CREDIT, x.AMT_ANNUITY)) / 365.25
+    if "peer_profile" in groups:
+        x["CREDIT_ANNUITY"] = safe_ratio(x.AMT_CREDIT, x.AMT_ANNUITY)
+        x["EXT_PROFILE_MEAN"] = x[["EXT_SOURCE_1", "EXT_SOURCE_2", "EXT_SOURCE_3"]].mean(axis=1)
     return x.replace([np.inf, -np.inf], np.nan)
 
 
@@ -196,7 +215,27 @@ class FeatureProcessor:
             self.income_median = float(x.AMT_INCOME_TOTAL.median())
         if "categories" in self.groups:
             self.frequencies = {c: x[c].fillna("__MISSING__").value_counts().div(len(x)).to_dict() for c in self.categorical}
+        self.profiles = []
+        if "peer_profile" in self.groups:
+            values = ["AMT_INCOME_TOTAL", "AMT_CREDIT", "AMT_ANNUITY", "CREDIT_ANNUITY", "EXT_PROFILE_MEAN"]
+            for keys in self.profile_keys(x):
+                grouped = x[values].groupby([keys[c] for c in keys], observed=True, dropna=False)
+                counts = grouped.size()
+                stats = grouped.agg(["median", "std"])
+                # Sparse groups fall back to training-wide statistics, never validation/test statistics.
+                stats.loc[counts.lt(20), :] = np.nan
+                fallback = {(value, stat): float(getattr(x[value], stat)()) for value in values for stat in ("median", "std")}
+                self.profiles.append((stats, counts, fallback))
         return self
+
+    @staticmethod
+    def profile_keys(x):
+        age = pd.cut(-x.DAYS_BIRTH / 365.25, [0, 27, 40, 50, 65, np.inf], include_lowest=True).astype(str)
+        term = pd.cut(x.CREDIT_ANNUITY, [-np.inf, 6, 12, 18, 24, 30, 36, np.inf]).astype(str)
+        return [pd.DataFrame({"education": x.NAME_EDUCATION_TYPE.fillna("__MISSING__"),
+                              "occupation": x.OCCUPATION_TYPE.fillna("__MISSING__"), "age": age}),
+                pd.DataFrame({"term": term, "income_type": x.NAME_INCOME_TYPE.fillna("__MISSING__"),
+                              "education": x.NAME_EDUCATION_TYPE.fillna("__MISSING__")})]
 
     def transform(self, x):
         z = x.copy()
@@ -206,6 +245,16 @@ class FeatureProcessor:
             z[f"{c}_RELATIVE_INCOME"] = safe_ratio(z.AMT_INCOME_TOTAL, peer)
         for c, mapping in self.frequencies.items():
             z[f"{c}_FREQUENCY"] = z[c].fillna("__MISSING__").map(mapping).fillna(0)
+        if getattr(self, "profiles", []):
+            for number, (keys, (stats, counts, fallback)) in enumerate(zip(self.profile_keys(x), self.profiles)):
+                index = pd.MultiIndex.from_frame(keys)
+                matched = stats.reindex(index)
+                z[f"PROFILE_{number}_COUNT"] = counts.reindex(index).fillna(0).to_numpy()
+                for (value, stat), default in fallback.items():
+                    feature = f"PROFILE_{number}_{value}_{stat.upper()}"
+                    z[feature] = matched[(value, stat)].fillna(default).to_numpy()
+                    if stat == "median":
+                        z[f"PROFILE_{number}_{value}_RELATIVE"] = safe_ratio(z[value], z[feature])
         for c in self.categorical:
             if self.model_name == "lightgbm":
                 z[c] = pd.Categorical(z[c], categories=self.categories[c])
