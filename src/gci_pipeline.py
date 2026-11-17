@@ -85,6 +85,10 @@ class Config:
             raise ValueError("Final mode requires the previously selected blend_weights")
         if self.mode == "final" and self.evaluate_audit:
             raise ValueError("Final training uses former audit rows; an audit score would not be independent")
+        if self.evaluate_audit and not self.frozen_choices:
+            raise ValueError("Audit evaluation requires frozen choices")
+        if self.evaluate_audit and self.blend_weights is None:
+            raise ValueError("Audit evaluation requires explicit frozen blend weights")
         if self.blend_weights is not None:
             weights = self.blend_weights
             if set(weights) - set(self.models) or any(v < 0 for v in weights.values()):
@@ -443,7 +447,8 @@ def tune_model(input_dir, study_dir, cfg, model_name="lightgbm", n_trials=20, ti
     y = train.TARGET.iloc[dev].reset_index(drop=True)
     study_dir = Path(study_dir)
     study_dir.mkdir(parents=True, exist_ok=True)
-    identity = {"input_hashes": hashes, "groups": cfg.feature_groups, "model": model_name,
+    identity = {"pipeline_sha256": sha256(__file__), "input_hashes": hashes,
+                "groups": cfg.feature_groups, "model": model_name, "n_splits": 3, "threads": cfg.threads,
                 "seed": cfg.seed, "audit_seed": cfg.audit_seed, "audit_fraction": cfg.audit_fraction,
                 "max_iterations": cfg.max_iterations, "early_stopping": cfg.early_stopping,
                 "model_params": cfg.model_params, "versions": {p: version(p) for p in PACKAGES}}
@@ -471,13 +476,14 @@ def tune_model(input_dir, study_dir, cfg, model_name="lightgbm", n_trials=20, ti
                           l2_leaf_reg=trial.suggest_float("l2_leaf_reg", 1, 30, log=True))
         else:
             raise ValueError("Unsupported tuning model")
+        trial_params = {**cfg.model_params.get(model_name, {}), **params}
         trial_cfg = Config(**{**asdict(cfg), "models": (model_name,), "n_splits": 3,
-                              "model_params": {model_name: params}, "blend_weights": None})
+                              "model_params": {model_name: trial_params}, "blend_weights": None})
         fitted = fit_cv(x, y, None, train.SK_ID_CURR.iloc[dev], trial_cfg, trial=trial)
         return fitted["metrics"][model_name]["oof_auc"]
 
     study.optimize(objective, n_trials=n_trials, timeout=timeout, n_jobs=1)
-    best = {**study.best_params}
+    best = {**cfg.model_params.get(model_name, {}), **study.best_params}
     if model_name == "lightgbm":
         best["subsample_freq"] = 1
     save_json(study_dir / f"{study_name}_best.json", {"params": best, "selection_auc": study.best_value, "identity": identity})

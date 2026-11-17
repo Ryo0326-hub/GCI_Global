@@ -51,3 +51,41 @@ def test_final_mode_requires_frozen_selection_and_never_evaluates_audit():
         Config(mode="final", frozen_choices=True, blend_weights={"lightgbm": 1.0}, evaluate_audit=True)
     with pytest.raises(ValueError):
         Config(blend_weights={"lightgbm": 0.3})
+
+
+def test_audit_requires_frozen_explicit_selection():
+    with pytest.raises(ValueError, match="frozen"):
+        Config(evaluate_audit=True)
+    with pytest.raises(ValueError, match="weights"):
+        Config(evaluate_audit=True, frozen_choices=True)
+
+
+def test_final_population_and_interrupted_run_never_promotes_partial_output(tmp_path, monkeypatch):
+    import gci_pipeline as gci
+    train = pd.DataFrame({"SK_ID_CURR": range(120), "TARGET": [0, 0, 0, 1] * 30,
+                          "DAYS_EMPLOYED": range(-120, 0)})
+    test = pd.DataFrame({"SK_ID_CURR": [200, 201], "DAYS_EMPLOYED": [-2, -1]})
+    sample = pd.DataFrame({"SK_ID_CURR": [201, 200], "TARGET": [0.5, 0.5]})
+    monkeypatch.setattr(gci, "load_inputs", lambda *a: (train, test, sample, {"fixture": "test-only"}))
+    def fit(x, y, test_x, ids, cfg, output_dir=None, audit_x=None, **kwargs):
+        assert len(x) == 120 and set(ids) == set(train.SK_ID_CURR)
+        assert audit_x is None
+        return {"fold_ids": np.arange(120) % 5, "oof": {"catboost": np.linspace(.1,.9,120)},
+                "test": {"catboost": np.array([.2,.8])}, "audit": {},
+                "metrics": {"catboost": {"oof_auc": .5, "folds": []}}}
+    monkeypatch.setattr(gci, "fit_cv", fit)
+    cfg = Config(models=("catboost",), mode="final", frozen_choices=True, blend_weights={"catboost": 1.})
+    manifest = gci.run_experiment("unused", tmp_path, cfg)
+    assert manifest["fitted_population_rows"] == 120 and manifest["audit_auc"] is None
+    assignments = pd.read_csv(Path(manifest["run_dir"]) / "fold_assignments.csv")
+    assert set(assignments.partition) == {"final_training"}
+    assert pd.read_csv(tmp_path / "submission.csv").TARGET.tolist() == [.8, .2]
+    old_csv = (tmp_path / "submission.csv").read_bytes()
+    old_manifest = (tmp_path / "latest_run.json").read_bytes()
+    def interrupted(*a, **k):
+        raise KeyboardInterrupt("simulate cancelled fold")
+    monkeypatch.setattr(gci, "fit_cv", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        gci.run_experiment("unused", tmp_path, cfg)
+    assert (tmp_path / "submission.csv").read_bytes() == old_csv
+    assert (tmp_path / "latest_run.json").read_bytes() == old_manifest
