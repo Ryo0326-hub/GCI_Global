@@ -4,6 +4,8 @@ tags: [gci, submissions]
 ---
 # Submission Tracker
 
+S17 v2's delivered CSV and ZIP remain unchanged after final review. The [exact executed notebook](https://colab.research.google.com/drive/1zRbaJKregEsrMBcxkpNW4ni8Oe24X6-J) is archived separately; the main notebook has later export/GPU safeguards for future runs. See [[research/SPRINT_REVIEW_2026-11-17]]. No rerun is needed for the delivered candidate.
+
 [[00 Dashboard]] · [[06 Decisions]]
 
 **Latest submitted result: S17 v1 — public ROC AUC 0.76365, rank 2,918.** Ryo supplied completed-scoring screenshots on November 17. The target remains >=0.80 AUC and top 10%; threshold accuracy is not the competition metric. The earlier observed rank-500 score was 0.77032, a changing public benchmark rather than a guaranteed final honours cutoff.

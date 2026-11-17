@@ -30,6 +30,8 @@ cell("markdown", """# GCI World: Home Credit submission workflow
 
 This is the new competition notebook. The original tutorial is unchanged.
 
+**S17 v2 is already complete:** use the delivered CSV and matching `comp_S17_v2.zip` to submit without rerunning. This notebook now includes later export and GPU-availability safeguards for future runs. The delivered ZIP preserves the exact earlier source/notebook that produced S17 v2. Running this notebook creates a new run; it does not finish or resume the delivered candidate. The sprint audit is closed and must not be reused for tuning.
+
 **Run:** use Run all and authorize your own Drive mount. The frozen CPU ensemble works without a GPU. If you deliberately configure a GPU experiment, choose a T4 in Runtime → Change runtime type first. Setup verifies the packages, then model steps run in fresh Python processes. The notebook session continues without a forced restart. The configuration below contains the current sprint candidate. Development runs reserve an audit set; a frozen final run uses all labelled rows.
 
 Outputs in `MyDrive/GCI_Global/Competition`:

@@ -45,7 +45,31 @@ def sha256(path):
 
 
 def save_json(path, value):
-    Path(path).write_text(json.dumps(value, indent=2, allow_nan=False) + "\n")
+    path = Path(path)
+    serialized = json.dumps(value, indent=2, allow_nan=False) + "\n"
+    with tempfile.NamedTemporaryFile(dir=path.parent, prefix=f".{path.stem}-", suffix=path.suffix, delete=False) as handle:
+        temporary = Path(handle.name)
+    try:
+        temporary.write_text(serialized)
+        if temporary.read_text() != serialized:
+            raise ValueError("JSON write verification failed")
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def promote_submission(source, destination, expected_sha256):
+    """Keep the previous complete CSV until its verified replacement is ready."""
+    destination = Path(destination)
+    with tempfile.NamedTemporaryFile(dir=destination.parent, prefix=".submission-", suffix=".csv", delete=False) as handle:
+        temporary = Path(handle.name)
+    try:
+        shutil.copy2(source, temporary)
+        if sha256(temporary) != expected_sha256:
+            raise ValueError("Submission copy verification failed")
+        temporary.replace(destination)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 @dataclass
@@ -342,7 +366,50 @@ def model_defaults(model_name, cfg):
                 thread_count=cfg.threads, allow_writing_files=False, verbose=False)
 
 
+def preflight_backends(cfg):
+    """Reject unavailable requested accelerators before fitting any full fold."""
+    probe_x = np.asarray([[float(i), float(i % 3)] for i in range(32)], dtype=np.float32)
+    probe_y = np.arange(32) % 2
+    for name in cfg.models:
+        model_cfg = replace(cfg, **cfg.model_options.get(name, {}), model_options={})
+        params = {**model_defaults(name, model_cfg), **cfg.model_params.get(name, {})}
+        requested = str(params.get("task_type", params.get("device_type", params.get("device", "cpu")))).lower()
+        if requested == "cpu":
+            continue
+        try:
+            if name == "xgboost":
+                from xgboost import XGBClassifier
+                model = XGBClassifier(n_estimators=1, max_depth=1, n_jobs=1, verbosity=0,
+                                      tree_method=params["tree_method"], device=params["device"])
+                model.fit(probe_x, probe_y)
+                actual = json.loads(model.get_booster().save_config())["learner"]["generic_param"]["device"]
+                if not str(actual).startswith("cuda"):
+                    raise RuntimeError(f"native probe fitted {actual}")
+            elif name == "catboost":
+                from catboost import CatBoostClassifier
+                selectors = {key: params[key] for key in ("task_type", "devices") if key in params}
+                model = CatBoostClassifier(iterations=1, depth=2, thread_count=1, verbose=False,
+                                           allow_writing_files=False, gpu_ram_part=.1, **selectors)
+                model.fit(probe_x, probe_y)
+                actual = model.get_all_params()["task_type"]
+                if str(actual).lower() != requested:
+                    raise RuntimeError(f"native probe fitted {actual}")
+            else:
+                import lightgbm as lgb
+                selectors = {key: params[key] for key in ("device_type", "device", "gpu_device_id",
+                             "gpu_platform_id", "num_gpu", "gpu_use_dp") if key in params}
+                model = lgb.LGBMClassifier(n_estimators=1, num_leaves=3, max_bin=15,
+                                          min_child_samples=1, n_jobs=1, verbosity=-1, **selectors)
+                model.fit(probe_x, probe_y)
+                actual = model.booster_.params.get("device_type", model.booster_.params.get("device", "cpu"))
+                if str(actual).lower() != requested:
+                    raise RuntimeError(f"native probe fitted {actual}")
+        except Exception as error:
+            raise RuntimeError(f"Requested {name} {requested} is unavailable; no full folds started and no CPU fallback") from error
+
+
 def fit_cv(x, y, test_x, ids, cfg, output_dir=None, audit_x=None, trial=None):
+    preflight_backends(cfg)
     result = {"oof": {}, "test": {}, "audit": {}, "metrics": {}}
     folds = list(StratifiedKFold(n_splits=cfg.n_splits, shuffle=True, random_state=cfg.seed).split(x, y))
     fold_ids = np.full(len(x), -1, dtype=int)
@@ -373,7 +440,9 @@ def fit_cv(x, y, test_x, ids, cfg, output_dir=None, audit_x=None, trial=None):
                 model.fit(train_x, y.iloc[tr], eval_set=[(valid_x, y.iloc[va])],
                           callbacks=[lgb.early_stopping(model_cfg.early_stopping, first_metric_only=True, verbose=False)])
                 best_iteration = int(model.best_iteration_ or model_cfg.max_iterations)
-                backend = str(model.booster_.params.get("device_type", "CPU")).upper()
+                backend = str(model.booster_.params.get("device_type", model.booster_.params.get("device", "CPU"))).upper()
+                if str(requested_backend).upper() != backend:
+                    raise RuntimeError(f"Requested {requested_backend}, fitted {backend}; no automatic CPU fallback")
             elif name == "xgboost":
                 from xgboost import XGBClassifier
                 model = XGBClassifier(**params)
@@ -571,7 +640,7 @@ def run_experiment(input_dir, output_dir, cfg=None, notes_dir=None):
                 "seconds": round(time.monotonic() - started, 2), "run_dir": str(run_dir.resolve()),
                 "artifact_hashes": artifact_hashes}
     save_json(run_dir / "manifest.json", manifest)
-    shutil.copy2(run_dir / "submission.csv", output_dir / "submission.csv")
+    promote_submission(run_dir / "submission.csv", output_dir / "submission.csv", manifest["submission_sha256"])
     save_json(output_dir / "latest_run.json", manifest)
     if notes_dir is not None:
         report = write_report(manifest, notes_dir)

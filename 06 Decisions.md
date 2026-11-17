@@ -8,9 +8,15 @@ tags: [gci, decisions]
 
 ## Current champion
 
-Earlier public champion at the first November 17 check: **F02 affordability LightGBM**, development OOF **0.757137**, public **0.76253**, rank **3237**. On November 17 the CSV downloaded from Omnicampus matched F02's SHA-256 exactly. The observed rank 500 score is **0.77032**. The latest target is **>=0.80 public ROC AUC**, with no promise that a local result will reach it.
+**Recommended candidate: S17 v2**, equal CPU CatBoost / CPU XGBoost, fully trained over the 171,202-row labelled population and delivered as a verified CSV/ZIP. Development AUC **0.763037**; one reserved audit comparison **0.764923**. Final-training OOF **0.764534** is not independent audit evidence. The audit is now closed: no further feature, parameter or weight search may use it. S17 v2's public score is unknown until Ryo submits it.
 
-Current standalone development leader: CPU CatBoost affordability **0.759009**. Tuned LightGBM with peer features scored **0.758534**, second seed **0.758037**. A 50/50 blend diagnostic reached **0.761028**; this selected development score is not independent audit evidence. GPU CatBoost affordability **0.757276** versus raw **0.750751** on the same five folds. Selection is still open; audit labels remain untouched. No final candidate is frozen yet.
+**Latest submitted result: S17 v1**, public **0.76365**, rank **2,918**. The target remains **>=0.80 public ROC AUC** and top 10%; neither has been demonstrated. See [[04 Submission Tracker]] for the exact candidate files.
+
+## Historical checkpoint before the sprint selection
+
+At the first November 17 check, **F02 affordability LightGBM** had development OOF **0.757137**, public **0.76253**, rank **3237**. The CSV downloaded from Omnicampus matched F02's SHA-256 exactly. Rank 500 was observed at **0.77032**, a time-specific cutoff.
+
+An early standalone leader was CPU CatBoost affordability **0.759009**. Tuned LightGBM with peer features scored **0.758534**, second seed **0.758037**; an early 50/50 blend diagnostic reached **0.761028**. GPU CatBoost affordability **0.757276** exceeded raw **0.750751** on the same five folds. Selection was open and audit labels untouched at that checkpoint; the completed freeze/audit/final delivery below supersede that state.
 
 ## 2026-11-17: public-solution research
 
@@ -52,7 +58,7 @@ Ryo submitted `submission_S17_v1.csv` and supplied completed-scoring screenshots
 
 - Run: `20261117T183627714036Z_S17_catboost_CPU_shallow`
 - CSV SHA-256: `4e44b9f3e3e171999cda3e5d4314739c0068b7f4877f19765cab0cac99132821`
-- Development OOF AUC: **0.7602004027**. Audit remains reserved.
+- Development OOF AUC: **0.7602004027**. The audit was still reserved when S17 v1 was delivered; it was used later in the single frozen comparison below.
 - Scoring page display: `2026-11-18 04:06:47` (display timezone not verified). Its output identifies November 17, 2026 UTC. Exact upload time is unconfirmed.
 - Matching ZIP is available; code-ZIP upload was not separately confirmed.
 - Source: Ryo's two result screenshots in this chat. The public score is recorded as feedback, not used to search prediction weights or manually override any rows.

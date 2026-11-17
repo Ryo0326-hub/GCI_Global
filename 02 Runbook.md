@@ -4,6 +4,8 @@ tags: [gci, workflow]
 ---
 # Runbook
 
+The delivered S17 v2 CSV/ZIP are already complete. Later export and GPU preflight fixes apply to future notebook runs. The exact executed source and notebook for S17 v2 remain inside `comp_S17_v2.zip`; do not substitute the newer root source or rewrite the historical manifest. No retraining is needed to submit the delivered files. The sprint audit is closed.
+
 [[00 Dashboard]] · [[03 Experiments]]
 
 ## Run the current notebook

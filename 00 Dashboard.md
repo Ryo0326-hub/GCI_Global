@@ -22,7 +22,7 @@ Build evidence that the next model generalizes better, then submit the strongest
 | Best local evidence | Selected CatBoost/XGBoost blend: development 0.763037; reserved audit 0.764923 |
 | Next action | [[docs/superpowers/plans/2026-11-17-honours-sprint\|Astra sprint plan]]: upload the S17 v2 CSV and matching ZIP; record completed scoring |
 
-Research: [[research/TOP_SOLUTIONS_2026-11-17|Lessons from second-, fifth- and seventh-place solutions]]. S17 v1 has been submitted; later candidates remain in validation.
+Research: [[research/TOP_SOLUTIONS_2026-11-17|Lessons from second-, fifth- and seventh-place solutions]]. S17 v1 has been submitted; S17 v2 completed validation and final training and is ready for manual upload.
 
 ## Latest run
 
@@ -38,6 +38,7 @@ Research: [[research/TOP_SOLUTIONS_2026-11-17|Lessons from second-, fifth- and s
 - [[05 Data and Rules]]: permitted inputs and validation boundaries.
 - [[06 Decisions]]: why a feature/model became the champion.
 - [[07 How the Submission Works]]: why a completed CSV can exist while other experiments run, and what the new features contribute.
+- [[research/SPRINT_REVIEW_2026-11-17|Final review and handoff]]: verification, safeguards and exact executed notebook.
 - [[research/CODE_STUDY|Public code study]] and [[COMPETITION_PLAN|Full competition plan]].
 - [[research/COLAB_ENVIRONMENT_FIX|Colab setup fix]] and [[research/FEATURE_SCREEN|Feature comparison evidence]].
 

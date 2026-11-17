@@ -1,0 +1,45 @@
+{
+  "reviewed_head": "4ca67bc4dc9d7757004e2d64fc59321c20bf81e7",
+  "reviewer": "fresh gpt-6-astra, read-only",
+  "python_312_tests": 38,
+  "python_313_tests": 38,
+  "regression_cases_red_then_green": 8,
+  "fresh_notebook_flows": [
+    {
+      "python": "3.12.12",
+      "parent_session_survived": true,
+      "stale_kernel_imports_untouched": true,
+      "competition_input_hash_check": true,
+      "bounded_fixture_training": true,
+      "optuna_trial": true,
+      "blend_diagnostic": true,
+      "submission_and_matching_zip_verified": true,
+      "report_archive_verified": true,
+      "full_competition_training": false,
+      "live_colab_mount_and_ui": false
+    },
+    {
+      "python": "3.13.11",
+      "parent_session_survived": true,
+      "stale_kernel_imports_untouched": true,
+      "competition_input_hash_check": true,
+      "bounded_fixture_training": true,
+      "optuna_trial": true,
+      "blend_diagnostic": true,
+      "submission_and_matching_zip_verified": true,
+      "report_archive_verified": true,
+      "full_competition_training": false,
+      "live_colab_mount_and_ui": false
+    }
+  ],
+  "native_unavailable_cuda_rejected_before_full_folds_seconds": 0.027,
+  "current_pipeline_sha256": "6d15d0f541d83d9a21f55d0cc91b20e527557ea65416df626a3570f1ba75899c",
+  "current_notebook_sha256": "0842f26d468ff68354ac1345c0a2a75d42b508beb312d0049648bd6ef3781609",
+  "current_notebook_drive_id": "1sAPtD9Kmf3DiXiyFaLinhfOHHTcuGYZR",
+  "executed_s17_v2_notebook_drive_id": "1zRbaJKregEsrMBcxkpNW4ni8Oe24X6-J",
+  "executed_s17_v2_notebook_sha256": "b20b3c2020b6d635aed521ad03ab6e5402c519bbd42603dd7dfb5a45cce09bed",
+  "both_notebook_readbacks_byte_identical": true,
+  "model_backup_drive_readback_byte_identical": true,
+  "s17_v2_delivery_unchanged": true,
+  "limitation": "Post-review fixes were exercised locally on Python 3.12/3.13; earlier pre-fix live Colab evidence remains separately recorded. Competition models and S17v2 delivered artifacts were not retrained or relabeled."
+}
