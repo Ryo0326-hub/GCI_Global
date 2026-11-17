@@ -4,48 +4,35 @@ tags: [gci, planning]
 ---
 # Roadmap
 
-[[00 Dashboard]] · [[COMPETITION_PLAN]]
+[[00 Dashboard]] · [[docs/superpowers/plans/2026-11-17-honours-sprint]]
 
-## Oct 9–11: reliable baselines
+Target: **>=0.80 public ROC AUC** and final top 10%. The current evidence is below 0.80; neither ranking nor final score is guaranteed. Deadline: **November 19, 2026, 8 p.m. Toronto**.
 
-- [x] Inspect the rules, tutorial, data and public code.
-- [x] Identify the Drive notebook and input/output folders.
-- [x] Build an independent notebook and reproducible pipeline.
-- [x] Verify the Obsidian dashboard and report import.
-- [x] Complete B01 on five development folds with reserved audit data.
-- [x] Verify the matching CSV/code ZIP and compare model OOF results.
-- [ ] Execute the notebook in Colab and confirm its Drive exports.
+## Completed
 
-## Oct 12–18: feature evidence
+- [x] Verify competition objective, supplied files and submission format.
+- [x] Set up the independent Colab notebook, local repository and Obsidian vault.
+- [x] Resolve the numerical-package setup and verify Python 3.12/3.13.
+- [x] Identify the exact F02 CSV behind public AUC 0.76253.
+- [x] Read the observed rank-500 cutoff: 0.77032 on November 17.
+- [x] Verify native T4 GPU training and preserve GPU settings through Optuna.
+- [x] Confirm affordability models on five development folds.
+- [x] Research public top solutions and test applicable feature ideas.
+- [x] Deliver a verified first CSV and matching code ZIP in Drive.
 
-- [x] F01: credit-score combinations screened with LightGBM; no material gain.
-- [x] F02: affordability and family ratios screened with LightGBM; +0.008438 OOF AUC.
-- [x] F03: missingness and employment/life-stage features screened with LightGBM.
-- [x] Test the improving groups together; reject the combination when it loses to affordability alone.
-- [ ] Confirm affordability using CatBoost and a second seed before tuning.
+## In progress
 
-## Oct 19–25: tuning
+- [x] Complete the bounded searches and deeper feature confirmations.
+- [x] Compare CatBoost, LightGBM and XGBoost using aligned OOF predictions.
+- [x] Freeze at most three finalists, including coarse blends.
+- [x] Inspect the reserved audit once, then freeze the final selection.
+- [ ] Refit on all labelled data and verify saved-model inference.
+- [ ] Deliver the final CSV, matching ZIP and updated notebook to Drive.
 
-- [ ] Persistent Optuna search on development rows.
-- [ ] Confirm best configurations on five folds and another seed.
-- [ ] Test supported peer statistics fitted within folds.
+## Ryo's upload steps
 
-## Oct 26–Nov 8: diversity
+- [ ] Upload the intended CSV and matching code ZIP to Omnicampus.
+- [ ] Wait for completed scoring; record score, rank, hash and upload time.
+- [ ] Verify the intended file is the LAST submission before the deadline.
 
-- [ ] Compare LightGBM/CatBoost blend with standalone champions.
-- [ ] Evaluate XGBoost if additional diversity is needed.
-- [ ] Run a bounded MLP/TabM experiment if compute is available.
-
-## Nov 9–15: freeze choices
-
-- [ ] Preselect at most three finalists using development evidence.
-- [ ] Inspect the reserved audit once after freezing designs.
-- [ ] Record the final features, parameters, seeds and weights.
-
-## Nov 16–19: final reproduction and upload
-
-- [ ] Full-data training after choice freeze.
-- [ ] Clean-session reproduction and CSV/ZIP hash checks.
-- [ ] Submit and wait for completed scoring.
-- [ ] Record the public score and uploaded file hash.
-- [ ] Verify the intended file is the LAST submission before 8 p.m. Nov 19.
+S17 v1 was submitted at public AUC 0.76365. The next candidate is in final training; the earlier candidate remains available in [[04 Submission Tracker]]. It does not require another notebook run. Neural or distributed experiments will not delay the final deliverable.

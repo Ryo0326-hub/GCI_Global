@@ -6,11 +6,13 @@ tags: [gci, workflow]
 
 [[00 Dashboard]] · [[03 Experiments]]
 
-## First Colab run
+## Run the current notebook
+
+**The November 17 searches and reserved audit are complete.** The final configuration is an equal CPU CatBoost/XGBoost blend; no GPU is required. A completed, verified CSV can be uploaded without rerunning the notebook. The experiment notebook and its outputs are preserved in [the dated Colab copy](https://colab.research.google.com/drive/1JO1rZCLe6dobLMWWvgCYg67TFPKnXVse).
 
 1. Reload the updated [comp.ipynb](https://colab.research.google.com/drive/1sAPtD9Kmf3DiXiyFaLinhfOHHTcuGYZR). If you have unsaved edits, save a separate copy before reloading.
-2. Select Runtime → Run all. The setup cell installs the pinned packages and tests them in a fresh process. Model steps also use fresh processes, so execution continues without a forced restart. Authorize your own Drive mount when prompted.
-3. Keep B01's five-fold development configuration and the audit disabled.
+2. Select a T4 under Runtime → Change runtime type if the configuration requests GPU, then Runtime → Run all. The setup cell installs the pinned packages and tests them in a fresh process. Model steps also use fresh processes, so execution continues without a forced restart. Authorize your own Drive mount when prompted.
+3. Use the saved sprint configuration. The tiny backend fit must report the requested device; a GPU error does not trigger a hidden CPU fallback.
 4. Wait for each fold and the output checks. Save the notebook with Cmd+S / Ctrl+S before the ZIP cell.
 5. Download `submission.csv` and `comp.zip`, or find them in the Competition Drive folder.
 
@@ -25,7 +27,7 @@ Keep NumPy **2.2.6**. NumPy 1.26.4 is unsupported on the Python 3.13 runtime see
 | Historical evidence | GCI_Global/Competition/output/runs/run_id/ |
 | Progress-note archive | GCI_Global/Competition/obsidian_reports.zip |
 
-Each run saves OOF predictions, parameters, package versions, input hashes, fold assignments and fitted models. New runs update the current candidate and preserve earlier run folders. A model blend is optional and must be separately validated.
+Each run saves OOF predictions, parameters, package versions, input hashes, fold assignments, fitted models and its executed source snapshot. Packaging first checks saved-model predictions against the frozen CSV. New GPU retraining is not expected to be byte-identical. New runs update the current candidate and preserve earlier run folders. The default blend was frozen and checked on the reserved audit before final training.
 
 ## Import Colab reports into Obsidian
 
@@ -37,28 +39,26 @@ Colab writes Markdown to Drive. That does **not** automatically synchronize this
 
 Alternatively, unzip the archive and copy its `Experiments/Runs` notes into this vault's matching folder. The helper preserves edited experiment notes and updates the generated Latest Run summary. The dashboard then shows the new run.
 
-## Next experiment
+## Controlled experiments
 
-Affordability is the strongest completed feature screen. After confirming the setup works, reproduce that candidate by changing these three values in the configuration cell:
+Use a new label and `mode='development'`. Keep seed 42, audit seed 20261009, five confirmation folds and `evaluate_audit=False`. Raw/affordability CatBoost comparisons and the initial LightGBM tuning are complete; consult [[06 Decisions]] before repeating them. [[research/TOP_SOLUTIONS_2026-11-17]] records the public-code ideas and measured results.
 
-```python
-label='F02_affordability',
-models=('lightgbm',),
-feature_groups=('affordability',),
-```
+Set `RUN_OPTUNA=True` only for development search. It uses three folds; the returned fixed+sampled parameters retain GPU/device settings and are confirmed with five folds. Trial counts are additional on resume. Keep one writer per study, with SQLite on local disk. The notebook backs it up consistently to Drive when the step ends. A lost runtime can lose trials since its last backup.
 
-Keep every other setting, including seed 42, five folds and `evaluate_audit=False`. Its local OOF AUC was **0.757137**, versus raw-feature LightGBM **0.748699**. The default notebook still reproduces B01 so environment repair does not silently change the experiment. For the next controlled comparison, use a new label and `models=('catboost',)` with the same affordability group, then confirm the strongest model with another seed. Enable Optuna after that confirmation. See [[research/FEATURE_SCREEN]] and [[06 Decisions]].
+The notebook builder uses `configs/sprint/final.json` once it exists; otherwise it uses the GPU affordability development configuration. To request CPU deliberately, set CatBoost `task_type='CPU'` and remove `devices`. Do not edit the executed pipeline while a run is active: a changed source fingerprint prevents promotion of that run.
 
 ## Audit and final refit
 
-Keep the audit disabled during exploration and early stopping. After freezing finalists, an audit run can evaluate it. Once choices are final, choose final mode, set frozen_choices=True and supply the selected blend weights. Final training includes all labeled rows and no longer provides independent audit evidence.
+**This sprint's audit has already been used once.** Do not run it again for further tuning. It selected 50% CatBoost / 50% XGBoost at AUC 0.764923; see [[03 Experiments]]. `configs/sprint/final.json` is the frozen final configuration. The guidance below describes the protocol for a future separately designed experiment.
+
+Keep the audit disabled during exploration and early stopping. After recording at most three frozen finalists and their component hashes, use `scripts/audit_frozen.py` for one comparison of the saved models, or use a frozen audit configuration. The saved-model route uses each run's exact source snapshot, checks its training partition, and does no new fitting. Do not evaluate the same candidates again through both routes. Do not retune after inspecting it. Once choices are final, choose final mode, set frozen_choices=True and supply the selected blend weights. Final training includes all labeled rows and no longer provides independent audit evidence.
 
 ## Local run
 
 The local Python 3.12 environment is in `.venv`. On this Mac the wrapper reuses the already-installed OpenMP library, without changing global package settings:
 
 ```bash
-.venv/bin/python scripts/run_local.py --input /Users/ryokitano/Downloads/Competition/input --output output --notes Experiments/Runs
+.venv/bin/python scripts/run_local.py --input /Users/ryokitano/Downloads/Competition/input --output output --config configs/sprint/final.json --notes Experiments/Runs
 ```
 
 To edit the pipeline locally, change `src/gci_pipeline.py` and regenerate the notebook with `.venv/bin/python scripts/build_notebook.py`. The code ZIP refuses to package a saved notebook with a different pipeline version from the executed run.

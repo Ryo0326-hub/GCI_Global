@@ -28,4 +28,33 @@ The fifth-place example supports neural networks as a complementary representati
 
 ## Results
 
-Pending the controlled experiments. Report failed ideas alongside successful ones; do not describe an adopted feature as an improvement until the comparison is complete.
+Initial five-fold results (seed 42, development rows only): tuned affordability LightGBM **0.758386**; additional loan terms **0.758191**; rich peer profiles **0.758555**; GOSS **0.757991**. Simple peer features scored **0.758534**. Loan terms and GOSS did not improve this comparison. The rich-profile gain is very small and needs confirmation; published success alone is not sufficient to keep a feature.
+
+An unlabelled distribution check found no exact duplicate rows within development data, and no test matches to development using all predictors or the checked demographic/date signature. Cash-loan shares were 90.55% in development and 90.72% in test; the largest missingness shift was about 0.52 percentage points. The striking contract-type shift described in the fifth-place Kaggle write-up is therefore not present in these supplied files. We are not copying its distribution-specific adjustments.
+
+The bounded comparisons are now complete; final selection is recorded below and in [[03 Experiments]].
+
+## Deeper feature engineering requested during execution
+
+The supplied README allows reproducible transformations of the provided inputs and prohibits external data and hand-labeling. It does not supply historical monthly observations. Deterministic augmentation can expose useful relationships to a model, but cannot restore missing factual information.
+
+New controlled hypotheses:
+
+- **Category combinations:** housing × family status, occupation × organization, education × occupation, income type × education/contract, age band × family status, and repayment-ratio band × contract. A combination can distinguish applicants whose separate categories look similar. Frequencies are fitted on training folds, and unseen validation categories stay unseen.
+- **Credit-enquiry patterns:** compare reported monthly and quarterly counts with annual-rate proxies, retaining missingness. These are comparisons between reported windows, not a reconstructed chronology. Do not sum overlapping windows as if they were disjoint events.
+- **Pricing scenarios:** for assumed 12/24/36/60-month amortizing terms, solve the rate implied by the supplied credit and annuity. Feasible scenarios are bounded at a hypothetical 0–6% monthly rate. Names explicitly say `RATE_HYPOTHESIS`; neither the true duration nor actual interest rate is known. Invalid credit/annuity values stay missing. This adapts the fifth-place team's scenario reasoning without its unavailable historical labels.
+- **XGBoost:** native categorical histogram boosting offers a third set of errors to compare with CatBoost and LightGBM. Preserve explicit device settings, use the common folds, and verify saved inference. A third model is kept only if its own validation or its contribution to the blend is useful.
+
+Existing `loan_terms` and GOSS did not improve their initial five-fold comparison. Therefore the new groups are tested separately, not added wholesale based on intuition. Audit labels stay closed until this bounded extension ends.
+
+Measured extension results: pricing scenarios improved profile LightGBM from **0.758555 to 0.759832**, with **0.760046** on seed 20261117. Category crosses scored **0.748534** and enquiry-window comparisons **0.758370** in that LightGBM comparison, so neither is automatically retained. Native XGBoost with the pricing group reached **0.761092**, versus **0.758902** without pricing. The common-fold 25% LightGBM / 50% shallow CPU CatBoost / 25% XGBoost blend reached **0.763262** on development OOF predictions. This is model-selection evidence, not an independent audit result. Adding the tuned GPU CatBoost to an equal four-way blend did not improve this diagnostic.
+
+Ryo's first submitted sprint candidate (the earlier shallow CPU CatBoost alone) received public AUC **0.76365**, rank **2,918**. It is not the newer pricing ensemble. See [[04 Submission Tracker]] for exact file hashes and scoring evidence.
+
+## Final selection after the bounded extension
+
+Tuned pricing XGBoost reached development AUC **0.761422**, confirmed at **0.761574** with the second seed. GPU category crosses scored **0.757862**, below the tuned GPU affordability baseline **0.758229**, and did not improve the tested blends. They were excluded. The strongest development blend was 25% pricing LightGBM / 50% shallow CPU CatBoost / 25% tuned pricing XGBoost at **0.763285**.
+
+Before reading audit labels, three designs and all component manifest hashes were frozen in `configs/sprint/frozen_finalists.json`. The single reserved audit comparison selected the simpler **50% CPU CatBoost / 50% CPU XGBoost** blend: **0.764923**, versus 0.764597 for the three-model blend and 0.762829 for XGBoost alone. These are held-out selection scores, not public leaderboard results. The selected pair is being refit on the full labelled population. No feature/weight search will follow the audit.
+
+The pricing features gave the clearest additional measured signal. They expose relationships among existing credit and payment fields; they do not add true monthly-history observations. No evidence so far supports a claim of >=0.80 AUC from this reduced schema.

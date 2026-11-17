@@ -1,19 +1,19 @@
 # GCI Global — Home Credit
 
-An independent competition notebook and an Obsidian project vault. The workflow compares LightGBM and CatBoost, supports controlled feature experiments and persistent Optuna searches, and packages each submission with its executed code and configuration.
+An independent competition notebook and an Obsidian project vault. The workflow compares LightGBM, CatBoost and XGBoost, supports controlled feature experiments and persistent Optuna searches, and packages each submission with its executed code and configuration.
 
 [Open the new notebook in Colab](https://colab.research.google.com/drive/1sAPtD9Kmf3DiXiyFaLinhfOHHTcuGYZR) · [Competition folder in Drive](https://drive.google.com/drive/folders/106aE1f2Nz4pRZ1EGtryNFhgvo74451sC)
 
 ## Start in Colab
 
-1. Reload the updated `comp.ipynb` and choose **Runtime → Run all**. Setup verifies the pins and continues. Authorize your own Drive mount when prompted.
-2. Keep the first run's B01 configuration. It fits five development folds and reserves 20% of labeled rows for a later audit.
+1. Reload the updated `comp.ipynb`, then **Runtime → Run all**. The frozen final ensemble uses CPU; select a T4 only for a separate GPU experiment. Setup verifies the pins and continues. Authorize your own Drive mount when prompted.
+2. Use the saved sprint configuration in the notebook. Development runs reserve 20% of labelled rows; a frozen final configuration uses all 171,202 labels. The backend preflight must pass before training.
 3. Save the notebook before packaging. Check that the CSV contains 61,500 rows and the ZIP verification succeeds.
 4. Review the experiment report before uploading the CSV and matching code ZIP to Omnicampus. Record the returned public score in the Submission Tracker.
 
 The notebook uses `MyDrive/GCI_Global/Competition/input/{train.csv,test.csv,sample_submission.csv}` and verifies the original file hashes. The original tutorial is preserved.
 
-The pinned stack uses **NumPy 2.2.6** and passed fresh Python **3.12 and 3.13** checks, including both model libraries. Do not downgrade to NumPy 1.26.4 on Python 3.13. Setup and notebook controls use standard-library code; numerical steps run in fresh processes with streamed progress. This avoids stale notebook imports and requires no forced kernel restart. See `research/COLAB_ENVIRONMENT_FIX.md` for diagnosis and recovery.
+The pinned stack uses **NumPy 2.2.6** and passed fresh Python **3.12 and 3.13** checks, including all three model libraries. Do not downgrade to NumPy 1.26.4 on Python 3.13. Setup and notebook controls use standard-library code; numerical steps run in fresh processes with streamed progress. This avoids stale notebook imports and requires no forced kernel restart. See `research/COLAB_ENVIRONMENT_FIX.md` for diagnosis and recovery.
 
 | Output | Drive path under GCI_Global/Competition |
 | --- | --- |
@@ -42,7 +42,7 @@ Use Python 3.12:
 python3.12 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/pip install pytest==8.4.1 nbformat==5.10.4
-.venv/bin/python scripts/run_local.py --input /path/to/Competition/input --output output --notes Experiments/Runs
+.venv/bin/python scripts/run_local.py --input /path/to/Competition/input --output output --config configs/sprint/final.json --notes Experiments/Runs
 ```
 
 LightGBM needs an OpenMP runtime on macOS. The local wrapper can reuse an existing Anaconda OpenMP library when present; Colab does not need this workaround.
@@ -60,8 +60,14 @@ Each run stores a frozen `reproduce_config.json`. The ZIP includes a reproductio
 
 ## Experiment order
 
+The November 17 sprint selected a **50% CatBoost / 50% XGBoost** blend after one reserved audit comparison (AUC **0.764923**). Its final configuration preserves affordability features for CatBoost and pricing/peer features for XGBoost. Final training uses all 171,202 labels across five folds. The independent audit is now closed to further model selection.
+
 Baseline → separate feature ablations → Optuna confirmation → model-diversity/blend checks → frozen audit → final full-data training. Keep folds and seeds fixed when comparing a single change. Audit evaluation remains disabled during exploration. Neural models are a later bounded experiment if they provide useful diversity.
 
-B01 CatBoost earned a user-confirmed public AUC of **0.756**, rank **668**. Its local OOF AUC was **0.752544**. Affordability features raised LightGBM's local OOF AUC from **0.748699** to **0.757137**; this candidate has no public score yet. See `research/FEATURE_SCREEN.md` and `04 Submission Tracker.md`. The next target is **0.80 ROC AUC**, with **0.85** as a stretch goal. The earlier leader screenshot showed 0.79169. Local OOF AUC does not establish a leaderboard result. The last competition upload counts; the supplied deadline is November 20, 2026 at 01:00 UTC.
+The latest user-confirmed public submission is **S17 v1 shallow CPU CatBoost: 0.76365, rank 2,918**. Its development OOF AUC is 0.760200. The prior F02 CSV was linked by exact downloaded hash to public AUC 0.76253. The observed rank 500 score on November 17 was 0.77032. Our target is **>=0.80 ROC AUC** and final top 10%; neither is achieved by a local validation result. Current sprint results and decisions are in `00 Dashboard.md` and `06 Decisions.md`.
 
-See `COMPETITION_PLAN.md`, `research/CODE_STUDY.md` and `CITATIONS.md` for the reasoning and primary references. Downloaded reference-code snapshots remain local; their pinned source links are recorded in Git. Only competition-provided data enters training.
+GPU backend/device settings survive Optuna and best-parameter application. Studies run with one writer and source/input/configuration identities. Colab uses a local SQLite database and consistent Drive backups at the end of each tuning step. Audit requires frozen choices and explicit weights. Saved-model inference is verified against the exported CSV; new GPU retraining can differ numerically.
+
+Only the last competition upload counts. Deadline: **November 19, 2026, 8 p.m. Toronto** (November 20 01:00 UTC). Keep time for completed scoring and a corrective upload.
+
+See `COMPETITION_PLAN.md`, `research/CODE_STUDY.md`, `research/TOP_SOLUTIONS_2026-11-17.md` and `CITATIONS.md` for the reasoning and primary references. Downloaded reference-code snapshots remain local; their pinned source links are recorded in Git. Only competition-provided data enters training.

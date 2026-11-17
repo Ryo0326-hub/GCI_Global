@@ -1,0 +1,52 @@
+{
+  "checks": {
+    "python_312_tests": 30,
+    "python_313_tests": 30,
+    "notebook_cells": 22,
+    "isolated_worker_steps": 6
+  },
+  "local_fresh_process_workflows": [
+    {
+      "python": "3.12.12",
+      "parent_session_survived": true,
+      "stale_kernel_imports_untouched": true,
+      "competition_input_hash_check": true,
+      "bounded_fixture_training": true,
+      "optuna_trial": true,
+      "blend_diagnostic": true,
+      "submission_and_matching_zip_verified": true,
+      "report_archive_verified": true,
+      "full_competition_training": false,
+      "live_colab_mount_and_ui": false
+    },
+    {
+      "python": "3.13.11",
+      "parent_session_survived": true,
+      "stale_kernel_imports_untouched": true,
+      "competition_input_hash_check": true,
+      "bounded_fixture_training": true,
+      "optuna_trial": true,
+      "blend_diagnostic": true,
+      "submission_and_matching_zip_verified": true,
+      "report_archive_verified": true,
+      "full_competition_training": false,
+      "live_colab_mount_and_ui": false
+    }
+  ],
+  "live_colab_worker": {
+    "python": "3.13.16",
+    "parent_session_survived": true,
+    "stale_kernel_imports_untouched": true,
+    "competition_input_hash_check": true,
+    "bounded_fixture_training": true,
+    "optuna_trial": true,
+    "blend_diagnostic": true,
+    "submission_and_matching_zip_verified": true,
+    "report_archive_verified": true,
+    "full_competition_training": false,
+    "live_colab_mount_and_ui": false
+  },
+  "live_colab_observation": "Executed through the mounted Colab notebook on Python 3.13.16; setup, backend probes, one tuning trial, three model families, blend diagnostic and matching ZIP passed on a development-only 3000-row fixture. The harness does not repeat Drive authentication or full competition training.",
+  "completed_development_runs_checked": 27,
+  "preserved_experiment_notebook": "https://colab.research.google.com/drive/1JO1rZCLe6dobLMWWvgCYg67TFPKnXVse"
+}

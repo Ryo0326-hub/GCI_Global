@@ -60,3 +60,7 @@ Ryo submitted `submission_S17_v1.csv` and supplied completed-scoring screenshots
 ## Frozen finalists — November 17
 
 Before inspecting the 34,241 reserved audit rows, froze three candidates in `configs/sprint/frozen_finalists.json`: tuned pricing XGBoost alone; equal shallow CPU CatBoost / tuned pricing XGBoost; and 25% pricing LightGBM / 50% shallow CPU CatBoost / 25% tuned pricing XGBoost. The latter leads development AUC at 0.763285. Exact component manifests, features, parameters, backend, seeds and iteration limits are recorded. The audit selects among these once; no subsequent feature or weight tuning on its scores. Final refit uses all 171,202 labelled rows.
+
+## One audit comparison and final choice
+
+The 34,241 reserved rows gave AUC 0.7628285960 to tuned XGBoost, 0.7649234456 to equal CatBoost/XGBoost, and 0.7645968685 to the three-model blend. Select equal CatBoost/XGBoost as specified by the frozen comparison protocol. The small blend difference is uncertain; do not tune against this audit. Keep each member's validated features and parameters in `configs/sprint/final.json`; train over the full 171,202-label population. Source and input hashes remain fixed during training. The actual Colab Python 3.13.16 workflow passed native library checks, one bounded tuning trial, all three model fits, blend diagnostics and matching CSV/ZIP generation on a development-only QA fixture.
