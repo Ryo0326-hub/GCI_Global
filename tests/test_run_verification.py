@@ -40,6 +40,14 @@ def test_saved_models_reproduce_and_tampering_is_rejected(tmp_path):
     with zipfile.ZipFile(bundle) as archive:
         assert archive.testzip() is None
         assert archive.read("submission.csv") == (run_dir / "submission.csv").read_bytes()
+    frozen_config = run_dir / "reproduce_config.json"
+    original_config = frozen_config.read_bytes()
+    changed_config = json.loads(original_config)
+    changed_config["seed"] = 9001
+    frozen_config.write_text(json.dumps(changed_config))
+    with pytest.raises(ValueError, match="artifact"):
+        gci.build_bundle(tmp_path, manifest, notebook)
+    frozen_config.write_bytes(original_config)
     model_file = run_dir / "catboost_fold_0.joblib"
     model_file.write_bytes(model_file.read_bytes() + b"changed")
     with pytest.raises(ValueError, match="artifact"):

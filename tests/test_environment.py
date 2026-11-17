@@ -66,3 +66,20 @@ def test_reject_numpy_1_on_python_313_before_installing():
     validate_python(PINS, (3, 13))
     with pytest.raises(RuntimeError, match="3.10–3.13"):
         validate_python(PINS, (3, 14))
+
+
+def test_sqlite_backup_keeps_committed_trials_from_live_wal_database(tmp_path):
+    import sqlite3
+    source, destination = tmp_path / "local", tmp_path / "drive_backup"
+    source.mkdir()
+    with sqlite3.connect(source / "studies.db") as connection:
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("CREATE TABLE trial (id INTEGER, score REAL)")
+        connection.execute("INSERT INTO trial VALUES (1, 0.75)")
+        connection.commit()
+        (source / "study_identity.json").write_text('{"source":"frozen"}')
+        gci_environment.backup_studies(source, destination)
+        with sqlite3.connect(destination / "studies.db") as restored:
+            assert restored.execute("SELECT * FROM trial").fetchall() == [(1, .75)]
+        assert (destination / "study_identity.json").read_text() == '{"source":"frozen"}'
+        assert not list(destination.glob("*.tmp"))

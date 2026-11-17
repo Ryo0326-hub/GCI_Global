@@ -572,6 +572,10 @@ def build_bundle(project_dir, manifest, notebook_path=None):
         raise ValueError("Pipeline changed since the run. Package the executed version or rerun.")
     if sha256(run_dir / "submission.csv") != manifest["submission_sha256"]:
         raise ValueError("Run submission bytes changed")
+    for name in ("reproduce_config.json", "requirements.lock.txt", "config.json"):
+        expected = manifest.get("artifact_hashes", {}).get(name)
+        if expected is not None and sha256(run_dir / name) != expected:
+            raise ValueError(f"Run artifact changed: {name}")
     notebook = Path(notebook_path) if notebook_path is not None else project_dir / "comp.ipynb"
     if not notebook.is_file():
         raise FileNotFoundError("Save comp.ipynb in the Competition folder before creating the code ZIP")

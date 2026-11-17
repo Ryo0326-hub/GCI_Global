@@ -78,3 +78,17 @@ def test_requested_gpu_failure_is_not_retried_on_cpu(tmp_path, monkeypatch, tuni
         gci.tune_model("unused", tmp_path, cfg, "catboost", n_trials=1)
     assert len(seen) == 1 and seen[0]["task_type"] == "GPU"
     assert not list(tmp_path.glob("*_best.json"))
+
+
+def test_notebook_application_retains_fixed_backend(tmp_path):
+    notebook = json.loads((Path(__file__).resolve().parents[1] / "comp.ipynb").read_text())
+    source = next("".join(c["source"]) for c in notebook["cells"]
+                  if c["cell_type"] == "code" and "best_params = pipeline_step" in "".join(c["source"]))
+    cfg = {"model_params": {"catboost": {"task_type": "GPU", "devices": "0"}}}
+    import gci_environment
+    context = {"gci_environment": gci_environment, "RUN_OPTUNA": True, "pipeline_step": lambda *a, **k: {"depth": 5},
+               "input_dir": tmp_path, "output_dir": tmp_path, "runtime_dir": tmp_path,
+               "config": cfg, "OPTUNA_MODEL": "catboost", "OPTUNA_TRIALS": 1,
+               "OPTUNA_TIMEOUT_SECONDS": 1}
+    exec(source, context)
+    assert cfg["model_params"]["catboost"] == {"task_type": "GPU", "devices": "0", "depth": 5}

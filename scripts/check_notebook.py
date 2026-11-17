@@ -49,6 +49,6 @@ if embedded_environments != [environment] or embedded_pins != [pins]:
     raise ValueError("Notebook environment setup differs from its source or requirements. Run scripts/build_notebook.py.")
 if notebook.metadata.gci.environment_sha256 != hashlib.sha256(environment.encode()).hexdigest():
     raise ValueError("Notebook environment hash differs from its source.")
-if worker_steps != 5:
-    raise ValueError("Expected fresh-process input, tuning, training, blend and packaging steps.")
+if worker_steps != 6:
+    raise ValueError("Expected fresh-process input, backend, tuning, training, blend and packaging steps.")
 print(f"Validated {len(notebook.cells)} cells: schema, syntax, pipeline/setup hashes, pins and {worker_steps} isolated steps.")

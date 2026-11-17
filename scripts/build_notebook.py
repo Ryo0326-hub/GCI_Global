@@ -11,6 +11,10 @@ requirements = (ROOT / "requirements.txt").read_text()
 citations = (ROOT / "CITATIONS.md").read_text()
 environment = (ROOT / "src/gci_environment.py").read_text()
 pins = dict(line.split("==") for line in requirements.splitlines() if line)
+default_path = ROOT / "configs/sprint/final.json"
+if not default_path.exists():
+    default_path = ROOT / "configs/sprint/catboost_gpu_affordability.json"
+default_config = json.loads(default_path.read_text())
 cells = []
 
 
@@ -26,7 +30,7 @@ cell("markdown", """# GCI World: Home Credit submission workflow
 
 This is the new competition notebook. The original tutorial is unchanged.
 
-**Run:** choose Runtime → Run all and authorize your own Drive mount. Setup verifies the packages, then model steps run in fresh Python processes. The notebook session continues without a forced restart. The default compares LightGBM and CatBoost on all 32 supplied predictors and keeps a separate audit set out of model selection.
+**Run:** choose a T4 GPU in Runtime → Change runtime type, then Run all and authorize your own Drive mount. Setup verifies the packages, then model steps run in fresh Python processes. The notebook session continues without a forced restart. The configuration below contains the current sprint candidate. Development runs reserve an audit set; a frozen final run uses all labelled rows.
 
 Outputs in `MyDrive/GCI_Global/Competition`:
 - `output/submission.csv`: the current format-checked candidate.
@@ -36,7 +40,7 @@ Outputs in `MyDrive/GCI_Global/Competition`:
 
 Local AUC is not the public leaderboard score. Upload to Omnicampus manually and record its score. The **last** submission counts. Only supplied input files are allowed.
 """)
-cell("markdown", "## 1. Install and verify the pinned environment\n\nThe tested NumPy 2.2.6 pin supports this Python 3.13 runtime. Setup tests imports and both models in a fresh process. Training, tuning and packaging also use fresh processes so old cached imports in the notebook cannot affect them. Run all continues after setup. CPU is suitable for these tree models.\n")
+cell("markdown", "## 1. Install and verify the pinned environment\n\nKeep the tested NumPy 2.2.6 pin on Python 3.12–3.13. Model steps use fresh processes, without forcing a kernel restart. CatBoost GPU needs an assigned GPU and explicit GPU settings; LightGBM remains on CPU.\n")
 cell("code", """# Setup and notebook controls use the Python standard library.
 from pathlib import Path
 import importlib
@@ -97,40 +101,59 @@ print('Input bytes match the audited dataset.')
 """)
 cell("markdown", """## 4. Configure one experiment
 
-Start with B01. For a controlled feature experiment, change `label` and add one feature group: `scores`, `affordability`, `tenure`, `missingness`, `peer`, `categories`, or `logs`.
+The default is the saved sprint candidate. For a controlled feature experiment, use a new `label` and `mode='development'`. Available groups: `scores`, `affordability`, `tenure`, `missingness`, `peer`, `categories`, or `logs`. GPU failures stop clearly. To choose CPU deliberately, set CatBoost `task_type='CPU'` and remove `devices`; use at most ten CPU tuning trials.
 
 Keep `evaluate_audit=False` while experimenting. Use a second `seed` when confirming a candidate. Later, after freezing choices, switch to `mode='final'`, `frozen_choices=True`, and supply the selected `blend_weights`. Final mode includes all labeled rows and has no independent audit score.
 """)
-cell("code", """config = dict(
-    label='B01_all_features',
-    mode='development',
-    models=('lightgbm', 'catboost'),
-    feature_groups=(),
-    seed=42,
-    n_splits=5,
-    max_iterations=2000,
-    early_stopping=150,
-    threads=4,
-    evaluate_audit=False,
-    frozen_choices=False,
-    blend_weights=None,  # Default picks the stronger standalone model by development OOF AUC.
-    model_params={},
-)
-
+cell("code", "config = " + repr(default_config) + "\n\n" + """
 RUN_OPTUNA = False
-OPTUNA_MODEL = 'lightgbm'
+OPTUNA_MODEL = 'catboost'
 OPTUNA_TRIALS = 20
-OPTUNA_TIMEOUT_SECONDS = 3600
+OPTUNA_TIMEOUT_SECONDS = 7200
 """)
-cell("markdown", "## 5. Optional Optuna tuning\n\nDisabled for the first baseline. Searches only development rows, persists its study, and uses three folds. Confirm the selected parameters with the five-fold run below. The trial count is additional trials when resuming.\n")
+cell("code", """backend_info = pipeline_step('''
+import platform, subprocess
+cfg = gci.Config(**payload['config'])
+result = {'python': platform.python_version(), 'models': {}}
+if 'catboost' in cfg.models:
+    from catboost import CatBoostClassifier
+    params = {**gci.model_defaults('catboost', cfg), **cfg.model_params.get('catboost', {})}
+    params.update(iterations=5, depth=2)
+    model = CatBoostClassifier(**params)
+    model.fit([[float(i), float(i % 3)] for i in range(256)], [i % 2 for i in range(256)])
+    backend = model.get_all_params()['task_type']
+    if backend != params.get('task_type', 'CPU').upper():
+        raise RuntimeError('Requested backend was not used; no automatic CPU fallback')
+    result['models']['catboost'] = backend
+    if backend == 'GPU':
+        result['gpu'] = subprocess.run(['nvidia-smi', '--query-gpu=name,memory.total,memory.free,driver_version',
+                                        '--format=csv'], capture_output=True, text=True, check=True).stdout.strip()
+if 'lightgbm' in cfg.models:
+    result['models']['lightgbm'] = cfg.model_params.get('lightgbm', {}).get('device_type', 'cpu')
+gci.save_json(Path(payload['output_dir']) / 'backend_preflight.json', result)
+''', config=config, output_dir=str(output_dir))
+print('Backend check passed:', backend_info)
+""")
+cell("markdown", "## 5. Optional Optuna tuning\n\nSearch development rows only with three folds, then confirm on five folds. The trial count is additional trials when resuming. Keep one writer per study. SQLite runs on Colab local disk and is backed up consistently to Drive when the step ends, including interruption. A runtime disconnect can lose trials since the last backup. Do not enable tuning for a frozen final configuration.\n")
 cell("code", """if RUN_OPTUNA:
-    best_params = pipeline_step('''
+    import shutil
+    study_dir = runtime_dir / 'studies'
+    study_backup = output_dir / 'studies'
+    study_dir.mkdir(exist_ok=True)
+    if not (study_dir / 'studies.db').exists() and (study_backup / 'studies.db').exists():
+        for path in study_backup.iterdir():
+            if path.is_file():
+                shutil.copy2(path, study_dir / path.name)
+    try:
+        best_params = pipeline_step('''
 result = gci.tune_model(payload['input_dir'], payload['study_dir'], gci.Config(**payload['config']),
                         model_name=payload['model_name'], n_trials=payload['n_trials'],
                         timeout=payload['timeout'])
-''', input_dir=str(input_dir), study_dir=str(output_dir / 'studies'), config=config,
-        model_name=OPTUNA_MODEL, n_trials=OPTUNA_TRIALS, timeout=OPTUNA_TIMEOUT_SECONDS)
-    config['model_params'][OPTUNA_MODEL] = best_params
+''', input_dir=str(input_dir), study_dir=str(study_dir), config=config,
+            model_name=OPTUNA_MODEL, n_trials=OPTUNA_TRIALS, timeout=OPTUNA_TIMEOUT_SECONDS)
+    finally:
+        gci_environment.backup_studies(study_dir, study_backup)
+    config['model_params'][OPTUNA_MODEL] = {**config['model_params'].get(OPTUNA_MODEL, {}), **best_params}
     print('Parameters selected for confirmation:', best_params)
 else:
     print('Optuna disabled: using the configured experiment.')
@@ -167,10 +190,13 @@ cell("markdown", """## 8. Save the notebook and package the matching code ZIP
 
 Press **Ctrl+S / Cmd+S** in Colab before this cell. The ZIP checks that the saved notebook contains the executed pipeline. It includes the frozen run configuration and matching CSV. Input datasets and fitted-model files are omitted from the ZIP; the included command regenerates the submission from the allowed inputs.
 """)
-cell("code", "(current_dir / 'CITATIONS.md').write_text(" + repr(citations) + ")\n" + """zip_path = Path(pipeline_step('''
-result = str(gci.build_bundle(payload['project_dir'], payload['manifest'],
-                              notebook_path=payload['notebook_path']))
-''', project_dir=str(current_dir), manifest=manifest, notebook_path=str(current_dir / 'comp.ipynb')))
+cell("code", "(current_dir / 'CITATIONS.md').write_text(" + repr(citations) + ")\n" + """bundle_result = pipeline_step('''
+verification = gci.verify_saved_predictions(payload['input_dir'], payload['manifest']['run_dir'])
+bundle = gci.build_bundle(payload['project_dir'], payload['manifest'], notebook_path=payload['notebook_path'])
+result = {'path': str(bundle), 'verification': verification}
+''', project_dir=str(current_dir), input_dir=str(input_dir), manifest=manifest, notebook_path=str(current_dir / 'comp.ipynb'))
+zip_path = Path(bundle_result['path'])
+print('Saved-model verification:', bundle_result['verification'])
 print('Verified code ZIP:', zip_path)
 print('Verified submission CSV:', submission_path)
 
@@ -205,6 +231,9 @@ notebook = {"nbformat": 4, "nbformat_minor": 5,
                          "gci": {"pipeline_version": "gci-setup-v1", "pipeline_sha256": hashlib.sha256(pipeline.encode()).hexdigest(),
                                  "environment_sha256": hashlib.sha256(environment.encode()).hexdigest()}},
             "cells": cells}
+if default_config.get('model_params', {}).get('catboost', {}).get('task_type') == 'GPU':
+    notebook['metadata']['accelerator'] = 'GPU'
+    notebook['metadata']['colab']['gpuType'] = 'T4'
 backup = ROOT / "research/comp_original.ipynb"
 if not backup.exists() and (ROOT / "comp.ipynb").exists():
     shutil.copy2(ROOT / "comp.ipynb", backup)

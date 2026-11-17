@@ -7,6 +7,26 @@ import sys
 import uuid
 
 
+def backup_studies(source, destination):
+    """Snapshot committed SQLite trials; never copy a live database file directly."""
+    import shutil
+    import sqlite3
+    source, destination = Path(source), Path(destination)
+    if not (source / "studies.db").is_file():
+        return
+    destination.mkdir(parents=True, exist_ok=True)
+    temporary = destination / f"studies-{uuid.uuid4().hex}.tmp"
+    try:
+        with sqlite3.connect(source / "studies.db") as reader, sqlite3.connect(temporary) as writer:
+            reader.backup(writer)
+        temporary.replace(destination / "studies.db")
+        for pattern in ("*_identity.json", "*_best.json", "*_trials.csv"):
+            for path in source.glob(pattern):
+                shutil.copy2(path, destination / path.name)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def validate_python(pins, python_version):
     minor = tuple(python_version[:2])
     if not (3, 10) <= minor < (3, 14):
