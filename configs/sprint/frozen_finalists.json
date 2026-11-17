@@ -1,0 +1,148 @@
+{
+  "frozen_choices": true,
+  "frozen_utc": "2026-11-17T19:37:29.844427+00:00",
+  "selection_basis": "Development OOF only; audit has not been scored. Coarse weights; no optimization after audit.",
+  "components": {
+    "catboost": {
+      "model": "catboost",
+      "run_dir": "output/sprint/cpu_shallow/runs/20261117T183627714036Z_S17_catboost_CPU_shallow",
+      "manifest_sha256": "81274d23948abaa48677eb93402dfb77a770490c3cc61c773608a1efe78c9964",
+      "config": {
+        "label": "S17_catboost_CPU_shallow",
+        "mode": "development",
+        "models": [
+          "catboost"
+        ],
+        "feature_groups": [
+          "affordability"
+        ],
+        "seed": 42,
+        "audit_seed": 20261009,
+        "audit_fraction": 0.2,
+        "n_splits": 5,
+        "max_iterations": 4000,
+        "early_stopping": 200,
+        "threads": 2,
+        "evaluate_audit": false,
+        "verify_input_hashes": true,
+        "frozen_choices": false,
+        "model_params": {
+          "catboost": {
+            "task_type": "CPU",
+            "depth": 4,
+            "learning_rate": 0.06056685237625633,
+            "l2_leaf_reg": 7.725378389307352,
+            "border_count": 254,
+            "max_ctr_complexity": 2
+          }
+        },
+        "blend_weights": null
+      },
+      "development_oof_auc": 0.7602004027053612
+    },
+    "lightgbm": {
+      "model": "lightgbm",
+      "run_dir": "output/sprint/deeper/runs/20261117T190350388043Z_S17_deeper_pricing",
+      "manifest_sha256": "1c31cff3642177c3b4f2f46e39e69760ba21e6a535ecb7b773e2aaff324889ff",
+      "config": {
+        "label": "S17_deeper_pricing",
+        "mode": "development",
+        "models": [
+          "lightgbm"
+        ],
+        "feature_groups": [
+          "affordability",
+          "peer_profile",
+          "pricing_proxies"
+        ],
+        "seed": 42,
+        "audit_seed": 20261009,
+        "audit_fraction": 0.2,
+        "n_splits": 5,
+        "max_iterations": 2000,
+        "early_stopping": 150,
+        "threads": 4,
+        "evaluate_audit": false,
+        "verify_input_hashes": true,
+        "frozen_choices": false,
+        "model_params": {
+          "lightgbm": {
+            "device_type": "cpu",
+            "max_depth": 7,
+            "num_leaves": 27,
+            "learning_rate": 0.013524193759741725,
+            "min_child_samples": 229,
+            "colsample_bytree": 0.6554286336979795,
+            "subsample": 0.9234711482538132,
+            "reg_alpha": 0.00013770415264511364,
+            "reg_lambda": 0.0013099105583495125,
+            "subsample_freq": 1
+          }
+        },
+        "blend_weights": null
+      },
+      "development_oof_auc": 0.7598319432295593
+    },
+    "xgboost": {
+      "model": "xgboost",
+      "run_dir": "output/sprint/xgboost_tuned_pricing/runs/20261117T192020835791Z_S17_xgboost_tuned_pricing",
+      "manifest_sha256": "6b40880f50da86cf19d05ba804e1c33977ce8d337b614ebc4c54cbb423fe2496",
+      "config": {
+        "label": "S17_xgboost_tuned_pricing",
+        "mode": "development",
+        "models": [
+          "xgboost"
+        ],
+        "feature_groups": [
+          "affordability",
+          "peer_profile",
+          "pricing_proxies"
+        ],
+        "seed": 42,
+        "audit_seed": 20261009,
+        "audit_fraction": 0.2,
+        "n_splits": 5,
+        "max_iterations": 2500,
+        "early_stopping": 150,
+        "threads": 2,
+        "evaluate_audit": false,
+        "verify_input_hashes": true,
+        "frozen_choices": false,
+        "model_params": {
+          "xgboost": {
+            "device": "cpu",
+            "tree_method": "hist",
+            "max_depth": 3,
+            "min_child_weight": 47.89514902613303,
+            "learning_rate": 0.02765820009108486,
+            "subsample": 0.8987566853061946,
+            "colsample_bytree": 0.7590988766312938,
+            "reg_lambda": 6.810518382648938,
+            "reg_alpha": 0.03706595581487583
+          }
+        },
+        "blend_weights": null
+      },
+      "development_oof_auc": 0.7614221356414048
+    }
+  },
+  "candidates": {
+    "xgboost_only": {
+      "xgboost": 1.0
+    },
+    "catboost_xgboost": {
+      "catboost": 0.5,
+      "xgboost": 0.5
+    },
+    "three_model_blend": {
+      "lightgbm": 0.25,
+      "catboost": 0.5,
+      "xgboost": 0.25
+    }
+  },
+  "development_auc": {
+    "xgboost_only": 0.7614221356414048,
+    "catboost_xgboost": 0.7630373675518417,
+    "three_model_blend": 0.7632853934900097
+  }
+}

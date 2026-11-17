@@ -8,7 +8,13 @@ tags: [gci, decisions]
 
 ## Current champion
 
-Public champion: **B01 CatBoost**, development OOF AUC **0.752544**, user-confirmed public AUC **0.756**, rank **668**. [[Experiments/Runs/20261009T041309638772Z_B01_all_features|Run evidence]]. Best local candidate: **F02 affordability LightGBM**, OOF **0.757137**, with no public score yet. Neither is a frozen final model.
+Earlier public champion at the first November 17 check: **F02 affordability LightGBM**, development OOF **0.757137**, public **0.76253**, rank **3237**. On November 17 the CSV downloaded from Omnicampus matched F02's SHA-256 exactly. The observed rank 500 score is **0.77032**. The latest target is **>=0.80 public ROC AUC**, with no promise that a local result will reach it.
+
+Current standalone development leader: CPU CatBoost affordability **0.759009**. Tuned LightGBM with peer features scored **0.758534**, second seed **0.758037**. A 50/50 blend diagnostic reached **0.761028**; this selected development score is not independent audit evidence. GPU CatBoost affordability **0.757276** versus raw **0.750751** on the same five folds. Selection is still open; audit labels remain untouched. No final candidate is frozen yet.
+
+## 2026-11-17: public-solution research
+
+Read actual application-feature code from the second- and seventh-place Kaggle solutions and the fifth-place explanation. Test additional loan/household ratios, fold-trained peer profiles and GOSS under the fixed validation protocol. Do not assume published scores transfer to our reduced dataset. The monthly-history neural approaches require files that this competition does not supply. See [[research/TOP_SOLUTIONS_2026-11-17]].
 
 ## 2026-10-09: Colab environment repair
 
@@ -39,3 +45,18 @@ Use a new comp.ipynb, preserve the tutorial, and keep project notes beside the c
 ## Decision format
 
 Date, candidate run, comparison run, controlled change, OOF/fold evidence, audit status, decision, reason, next experiment. Use the Decision template for an additional note and link it here.
+
+## S17 v1 public result — reported November 17
+
+Ryo submitted `submission_S17_v1.csv` and supplied completed-scoring screenshots: **public ROC AUC 0.76365**, **rank 2,918**. This improves F02's 0.76253 by **0.00112** and the reported rank by 319 positions. It remains 0.00667 below the earlier observed rank-500 score of 0.77032; that cutoff can move.
+
+- Run: `20261117T183627714036Z_S17_catboost_CPU_shallow`
+- CSV SHA-256: `4e44b9f3e3e171999cda3e5d4314739c0068b7f4877f19765cab0cac99132821`
+- Development OOF AUC: **0.7602004027**. Audit remains reserved.
+- Scoring page display: `2026-11-18 04:06:47` (display timezone not verified). Its output identifies November 17, 2026 UTC. Exact upload time is unconfirmed.
+- Matching ZIP is available; code-ZIP upload was not separately confirmed.
+- Source: Ryo's two result screenshots in this chat. The public score is recorded as feedback, not used to search prediction weights or manually override any rows.
+
+## Frozen finalists — November 17
+
+Before inspecting the 34,241 reserved audit rows, froze three candidates in `configs/sprint/frozen_finalists.json`: tuned pricing XGBoost alone; equal shallow CPU CatBoost / tuned pricing XGBoost; and 25% pricing LightGBM / 50% shallow CPU CatBoost / 25% tuned pricing XGBoost. The latter leads development AUC at 0.763285. Exact component manifests, features, parameters, backend, seeds and iteration limits are recorded. The audit selects among these once; no subsequent feature or weight tuning on its scores. Final refit uses all 171,202 labelled rows.

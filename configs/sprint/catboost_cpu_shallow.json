@@ -1,0 +1,31 @@
+{
+  "label": "S17_catboost_CPU_shallow",
+  "mode": "development",
+  "models": [
+    "catboost"
+  ],
+  "feature_groups": [
+    "affordability"
+  ],
+  "seed": 42,
+  "audit_seed": 20261009,
+  "audit_fraction": 0.2,
+  "n_splits": 5,
+  "max_iterations": 4000,
+  "early_stopping": 200,
+  "threads": 2,
+  "evaluate_audit": false,
+  "verify_input_hashes": true,
+  "frozen_choices": false,
+  "model_params": {
+    "catboost": {
+      "task_type": "CPU",
+      "depth": 4,
+      "learning_rate": 0.06056685237625633,
+      "l2_leaf_reg": 7.725378389307352,
+      "border_count": 254,
+      "max_ctr_complexity": 2
+    }
+  },
+  "blend_weights": null
+}

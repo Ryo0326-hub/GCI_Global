@@ -1,0 +1,36 @@
+{
+  "label": "S17_lgb40_profiles",
+  "mode": "development",
+  "models": [
+    "lightgbm"
+  ],
+  "feature_groups": [
+    "affordability",
+    "peer_profile"
+  ],
+  "seed": 42,
+  "audit_seed": 20261009,
+  "audit_fraction": 0.2,
+  "n_splits": 5,
+  "max_iterations": 2000,
+  "early_stopping": 150,
+  "threads": 4,
+  "evaluate_audit": false,
+  "verify_input_hashes": true,
+  "frozen_choices": false,
+  "model_params": {
+    "lightgbm": {
+      "device_type": "cpu",
+      "max_depth": 7,
+      "num_leaves": 26,
+      "learning_rate": 0.011552277835052967,
+      "min_child_samples": 330,
+      "colsample_bytree": 0.6531325331332545,
+      "subsample": 0.9015168319635369,
+      "reg_alpha": 1.3118112546277345e-05,
+      "reg_lambda": 0.00044296135636434826,
+      "subsample_freq": 1
+    }
+  },
+  "blend_weights": null
+}

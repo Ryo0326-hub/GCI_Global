@@ -1,0 +1,36 @@
+{
+  "label": "S17_lightgbm_categories",
+  "mode": "development",
+  "models": [
+    "lightgbm"
+  ],
+  "feature_groups": [
+    "affordability",
+    "categories"
+  ],
+  "seed": 42,
+  "audit_seed": 20261009,
+  "audit_fraction": 0.2,
+  "n_splits": 5,
+  "max_iterations": 2000,
+  "early_stopping": 150,
+  "threads": 4,
+  "evaluate_audit": false,
+  "verify_input_hashes": true,
+  "frozen_choices": false,
+  "model_params": {
+    "lightgbm": {
+      "device_type": "cpu",
+      "max_depth": 7,
+      "num_leaves": 27,
+      "learning_rate": 0.013524193759741725,
+      "min_child_samples": 229,
+      "colsample_bytree": 0.6554286336979795,
+      "subsample": 0.9234711482538132,
+      "reg_alpha": 0.00013770415264511364,
+      "reg_lambda": 0.0013099105583495125,
+      "subsample_freq": 1
+    }
+  },
+  "blend_weights": null
+}
